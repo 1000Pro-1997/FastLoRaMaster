@@ -647,8 +647,19 @@ export function buildLoraBox(node, opts = {}) {
         type: "custom",
         name: "fla_lora_box",
         serialize: false,   // 값이 없는 표시용 위젯
+        // 이 줄은 테두리만 그리고 자리는 차지하지 않아야 한다.
+        //
+        // 그런데 프론트엔드는 배치할 때 computeSize()[1] 에 +4 를 더하므로
+        // (_arrangeWidgets) [0,0] 을 돌려줘도 4px 를 먹는다. 그리고
+        // getWidgetOnPos 는 widgets 를 앞에서부터 훑는데 이 위젯이 맨 앞이라,
+        // 그 4px 띠를 누르면 mouse 가 없는 이 위젯이 먼저 잡힌다.
+        // 그러면 클릭이 그대로 사라지고, 프론트엔드는 위젯을 못 찾은 것으로
+        // 보고 노드 본체를 끌기 시작한다.
+        //
+        // computeSize 로 -4 를 돌려주면 +4 와 상쇄되어 높이가 0 이 되고,
+        // 히트 영역도 (h - mtop - mbot) = -4 + 2 - 2 = 0 이라 잡히지 않는다.
         computeSize() {
-            return [0, 0];
+            return [0, -4];
         },
         draw(ctx, n, widgetWidth, posY) {
             const width = node.size?.[0] ?? widgetWidth;

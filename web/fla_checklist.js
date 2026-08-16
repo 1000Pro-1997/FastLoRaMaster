@@ -263,8 +263,11 @@ function makePanelBox(node, first, last) {
         name: "fla_panel_box",
         serialize: false,   // 값이 없는 표시용 위젯
         flaRow: true,
+        // 프론트엔드가 배치할 때 높이에 +4 를 더하므로(_arrangeWidgets)
+        // -4 를 돌려줘야 실제로 0 이 된다. 그러지 않으면 이 줄이 4px 를 먹고,
+        // getWidgetOnPos 에서 mouse 없는 이 위젯이 먼저 잡혀 클릭이 사라진다.
         computeSize() {
-            return [0, 0];
+            return [0, -4];
         },
         draw(ctx, n, widgetWidth, posY) {
             const width = node.size?.[0] ?? widgetWidth;
@@ -362,8 +365,9 @@ function makeInputWidget(node, opts) {
         inputEl: input,
 
         computeSize() {
-            // overlay 는 다른 줄 위에 겹쳐 그리므로 자기 높이를 갖지 않는다
-            if (opts.overlay) return [0, 0];
+            // overlay 는 다른 줄 위에 겹쳐 그리므로 자기 높이를 갖지 않는다.
+            // +4 가 더해지므로 -4 를 돌려줘야 실제 높이가 0 이 된다.
+            if (opts.overlay) return [0, -4];
             return [0, typeof opts.height === "function" ? opts.height() : opts.height];
         },
 
