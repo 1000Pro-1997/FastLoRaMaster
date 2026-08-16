@@ -215,12 +215,12 @@ function rebuildLoraWidgets(node) {
     // 기존 로라 관련 위젯만 걷어낸다
     node.widgets = (node.widgets ?? []).filter((w) => !w.flaLoraRow);
 
-    const loras = node.flaLoras ?? [];
     const lorasW = findWidget(node, "loras_enabled");
 
     // 로라 적용 토글 ~ 로라 추가 버튼까지 한 박스로. FLAChecklist 와 공용이다.
     const box = buildLoraBox(node, {
-        loras: () => loras,
+        // 배열을 붙잡아두지 않는다. 프리셋을 불러오면 통째로 갈리기 때문이다.
+        loras: () => node.flaLoras ?? [],
         enabled: () => (lorasW ? lorasW.value !== false : true),
         setEnabled: (v) => {
             if (lorasW) lorasW.value = v;
