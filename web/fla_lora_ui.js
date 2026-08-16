@@ -290,8 +290,10 @@ export function makeLoraRow(node, lora, idx, opts = {}) {
         mouse(event, pos, n) {
             const gate = mouseGate(event);
 
-            // 숫자 위에서 누르면 드래그 조절을 준비한다
+            // 숫자 위에서 누르면 드래그 조절을 준비한다.
+            // 앞선 드래그가 up 을 놓쳐 갇혀 있어도 여기서 초기화되어 회복된다.
             if (gate === "down") {
+                drag.cancel();
                 if (inBounds(pos, this.bounds.num)) drag.begin(pos);
                 return;
             }
@@ -309,8 +311,12 @@ export function makeLoraRow(node, lora, idx, opts = {}) {
 
             if (gate !== "up") return false;
 
-            // 드래그였으면 클릭으로 치지 않는다(입력칸이 뜨면 안 된다)
-            if (drag.active && drag.end()) return true;
+            // up 이 오면 드래그 상태는 무조건 푼다.
+            // 여기서 안 풀면(예: rebuild 로 이 위젯이 교체돼 up 을 놓치면)
+            // 다음 클릭이 계속 "드래그였다"로 잡혀 아무것도 안 눌린다.
+            const wasDragged = drag.active && drag.end();
+            // 실제로 값이 움직였을 때만 클릭으로 치지 않는다(입력칸이 뜨면 안 된다)
+            if (wasDragged) return true;
 
             return handleLoraRowClick(node, lora, this, pos, {
                 node, widgetY: this.lastY,
@@ -526,6 +532,7 @@ export function buildLoraBox(node, opts = {}) {
             const gate = mouseGate(event);
 
             if (gate === "down") {
+                headDrag.cancel();
                 if (inBounds(pos, this.bounds.all)) headDrag.begin(pos);
                 return;
             }
@@ -539,7 +546,9 @@ export function buildLoraBox(node, opts = {}) {
 
             if (gate !== "up") return false;
 
-            if (headDrag.active && headDrag.end()) return true;
+            // up 이 오면 무조건 푼다(위와 같은 이유)
+            const wasDragged = headDrag.active && headDrag.end();
+            if (wasDragged) return true;
 
             if (inBounds(pos, this.bounds.toggle)) {
                 setEnabled(!on);
@@ -767,6 +776,11 @@ export function makeDragValue({ step = 6, amount = 0.01 } = {}) {
             startX = null;
             acc = 0;
             return wasMoved;
+        },
+        /** 값 판정 없이 상태만 버린다. 놓친 up 에서 회복할 때 쓴다. */
+        cancel() {
+            startX = null;
+            acc = 0;
         },
     };
 }
