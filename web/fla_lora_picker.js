@@ -57,7 +57,7 @@ function addStyles() {
       .fla-lp-main{display:flex;flex:1;min-height:0}.fla-lp-side{width:230px;flex:none;padding:8px;overflow-y:scroll;scrollbar-gutter:stable;background:#20242a;border-right:1px solid #383e48}.fla-lp-side-tools{display:flex;justify-content:flex-end;gap:4px;height:31px;padding:0 4px 5px;border-bottom:1px solid #343a43;margin-bottom:5px}.fla-lp-side-tools button{display:grid;width:30px;height:27px;padding:0;place-items:center;color:#7d858f;background:transparent;border:0;border-radius:5px;font-size:17px;cursor:pointer}.fla-lp-side-tools button:hover{background:#303640}.fla-lp-side-tools button.on{color:#40a8ff;background:#263d52}.fla-lp-side-tools button.star-on{color:#ffd34e;background:#493d21}.fla-lp-folder{display:flex;align-items:center;width:100%;height:31px;padding:0 8px;color:#c8cdd5;background:transparent;border:0;border-radius:5px;text-align:left;white-space:nowrap;overflow:hidden;cursor:pointer}.fla-lp-folder:hover{background:#303640}.fla-lp-folder.on{color:#72baff;background:#283f55;font-weight:600}.fla-lp-indent{display:inline-block;flex:none}.fla-lp-fold{display:inline-grid;width:18px;height:24px;flex:none;place-items:center;color:#a8b0ba}.fla-lp-folder-name{overflow:hidden;text-overflow:ellipsis}
       .fla-lp-content{display:flex;flex:1;min-width:0;flex-direction:column}.fla-lp-path{display:flex;align-items:center;min-height:41px;padding:0 12px;gap:4px;background:#1d2026;border-bottom:1px solid #383e48}.fla-lp-crumb{position:relative;display:inline-flex;align-items:center}.fla-lp-crumb>button{padding:6px 2px;color:#72baff;background:transparent;border:0;cursor:pointer}.fla-lp-crumb .arrow{padding-left:5px}.fla-lp-menu{position:absolute;z-index:5;left:0;top:30px;min-width:175px;max-height:300px;padding:5px;overflow-y:auto;background:#292d34;border:1px solid #505763;border-radius:6px;box-shadow:0 8px 25px #000}.fla-lp-menu button{display:block;width:100%;padding:7px 10px;color:#ddd;background:transparent;border:0;border-radius:4px;text-align:left;cursor:pointer}.fla-lp-menu button:hover{background:#3a424e}.fla-lp-count{margin-left:auto;color:#929ba8}
       .fla-lp-grid{flex:1;min-height:0;padding:12px;overflow-x:hidden;overflow-y:scroll;scrollbar-gutter:stable;display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));grid-auto-rows:max-content;align-content:start;align-items:start;gap:12px}.fla-lp-card{position:relative;display:block;min-width:0;height:auto;padding:0;overflow:hidden;color:#ddd;background:#242830;border:1px solid #3b424d;border-radius:9px;cursor:pointer;box-sizing:border-box}.fla-lp-card:hover{border-color:#79a9d1;box-shadow:0 3px 14px #0008}.fla-lp-preview{position:relative;display:grid;width:100%;height:auto;aspect-ratio:3 / 4;place-items:center;overflow:hidden;color:#59616d;background:#111318}.fla-lp-preview img,.fla-lp-preview video{position:absolute;inset:0;display:block;width:100%;height:100%;object-fit:cover}.fla-lp-shade{position:absolute;inset:0;pointer-events:none;background:linear-gradient(#000b,#0000 32%,#0000 55%,#000c)}
-      .fla-lp-title{position:absolute;top:9px;left:9px;right:42px;pointer-events:none;overflow:hidden;color:#fff;font-weight:700;line-height:1.28;text-shadow:0 1px 3px #000;white-space:normal;overflow-wrap:anywhere;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3}.fla-lp-star{position:absolute;z-index:2;top:6px;right:7px;width:30px;height:30px;padding:0;color:#fff;background:#111a;border:0;border-radius:50%;font-size:20px;cursor:pointer}.fla-lp-star.on{color:#ffd34e}.fla-lp-tags{position:absolute;left:8px;right:8px;bottom:8px;pointer-events:none;display:flex;flex-direction:column;align-items:flex-start;gap:3px}.fla-lp-badge{max-width:100%;padding:3px 6px;color:#fff;background:#111d;border-radius:4px;font-size:11px;white-space:normal;overflow-wrap:anywhere}.fla-lp-version{max-width:100%;padding:3px 6px;color:#ddd;background:#111d;border-radius:4px;font-size:11px;white-space:normal;overflow-wrap:anywhere}.fla-lp-mark{padding:0 1px;color:#171717;background:#ffd84d;border-radius:2px;text-shadow:none}.fla-lp-empty{padding:70px;text-align:center;color:#89919d}
+      .fla-lp-title{position:absolute;top:9px;left:9px;right:42px;pointer-events:none;overflow:hidden;color:#fff;font-weight:700;line-height:1.28;text-shadow:0 1px 3px #000;white-space:normal;overflow-wrap:anywhere;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3}.fla-lp-star,.fla-lp-copy{position:absolute;z-index:2;right:7px;width:30px;height:30px;padding:0;color:#fff;background:#111a;border:0;border-radius:50%;cursor:pointer}.fla-lp-star{top:6px;font-size:20px}.fla-lp-star.on{color:#ffd34e}.fla-lp-copy{top:40px;display:grid;place-items:center}.fla-lp-copy svg{width:21px;height:21px}.fla-lp-copy:hover{background:#2f6fd0}.fla-lp-tags{position:absolute;left:8px;right:8px;bottom:8px;pointer-events:none;display:flex;flex-direction:column;align-items:flex-start;gap:3px}.fla-lp-badge{max-width:100%;padding:3px 6px;color:#fff;background:#111d;border-radius:4px;font-size:11px;white-space:normal;overflow-wrap:anywhere}.fla-lp-version{max-width:100%;padding:3px 6px;color:#ddd;background:#111d;border-radius:4px;font-size:11px;white-space:normal;overflow-wrap:anywhere}.fla-lp-mark{padding:0 1px;color:#171717;background:#ffd84d;border-radius:2px;text-shadow:none}.fla-lp-empty{padding:70px;text-align:center;color:#89919d}
       .fla-lp-dt-bg{position:fixed;inset:0;z-index:100010;background:#000b;display:grid;place-items:center;padding:3vh}.fla-lp-dt{width:min(1100px,94vw);height:min(860px,92vh);display:flex;flex-direction:column;background:#181a1f;color:#ddd;border:1px solid #4b5360;border-radius:12px;overflow:hidden;box-shadow:0 22px 70px #000;font:14px Arial,sans-serif}
       .fla-lp-dt-head{display:flex;align-items:flex-start;gap:10px;padding:13px 14px;background:#22262d;border-bottom:1px solid #383e48}.fla-lp-dt-titles{flex:1;min-width:0}.fla-lp-dt-head h2{margin:0;font-size:16px;font-weight:700;color:#fff;overflow-wrap:anywhere}.fla-lp-dt-head .sub{margin-top:3px;color:#98a1ad;font-size:12px;overflow-wrap:anywhere}.fla-lp-dt-head button{flex:none;width:34px;height:34px;padding:0;color:#ddd;background:#303640;border:1px solid #454c58;border-radius:7px;font-size:19px;cursor:pointer}.fla-lp-dt-head button:hover{background:#3a424e}
       .fla-lp-dt-tabs{display:flex;gap:2px;padding:0 12px;background:#1d2026;border-bottom:1px solid #383e48}.fla-lp-dt-tabs button{position:relative;padding:11px 16px;color:#98a1ad;background:transparent;border:0;font-size:13px;font-weight:600;cursor:pointer}.fla-lp-dt-tabs button:hover{color:#c8cdd5}.fla-lp-dt-tabs button.on{color:#5aa9ff}.fla-lp-dt-tabs button.on::after{content:"";position:absolute;left:8px;right:8px;bottom:-1px;height:2px;background:#5aa9ff;border-radius:2px}
@@ -117,7 +117,7 @@ function highlighted(element, text, query) {
     element.append(document.createTextNode(text.slice(start)));
 }
 
-function makePreview(item, interactive = false, blur = false, onReveal = null) {
+function makePreview(item, interactive = false, blur = false, onReveal = null, onCopyWords = null) {
     const preview = document.createElement("div"); preview.className = "fla-lp-preview";
     if (item.preview) {
         const media = document.createElement(item.preview_type === "video" ? "video" : "img"); media.src = item.preview;
@@ -135,13 +135,29 @@ function makePreview(item, interactive = false, blur = false, onReveal = null) {
         try { await saveFavorite(item, !item.favorite); star.classList.toggle("on", item.favorite); star.textContent = item.favorite ? "★" : "☆"; }
         finally { star.disabled = false; }
     };
+    const words = (item.trained_words ?? []).filter(Boolean);
+    const copy = document.createElement("button"); copy.className = "fla-lp-copy";
+    copy.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 2h16v11h-2V4H5v16h7v2H3V2Z"/><path fill="currentColor" d="M7 7h8v2H7V7Zm0 4h8v2H7v-2Zm0 4h5v2H7v-2Zm9-1 5 4-5 4v-3h-4v-2h4v-3Z"/></svg>`;
+    copy.title = t("copyTriggers");
+    copy.onclick = async (event) => {
+        event.stopPropagation();
+        const text = words.join(", ");
+        if (!text) return;
+        try {
+            await navigator.clipboard.writeText(text);
+            onCopyWords?.(text);
+            toast(t("triggersCopied"));
+        } catch (e) { /* 클립보드 권한이 없으면 아무 상태도 바꾸지 않는다 */ }
+    };
     // 배지와 버전은 한 줄에 나란히 둔다. 길면 줄바꿈되어 전부 보인다.
     const tags = document.createElement("div"); tags.className = "fla-lp-tags";
     const badge = document.createElement("div"); badge.className = "fla-lp-badge"; badge.textContent = modelBadge(item.base_model);
     const version = document.createElement("div"); version.className = "fla-lp-version"; version.textContent = item.version || "";
     if (item.version) tags.append(version);
     tags.append(badge);
-    preview.append(shade, title, star, tags);
+    preview.append(shade, title, star);
+    if (words.length) preview.append(copy);
+    preview.append(tags);
 
     // 성인물 가림막. "보기" 를 누르면 이 카드만 풀린다.
     if (blur) {
@@ -153,8 +169,19 @@ function makePreview(item, interactive = false, blur = false, onReveal = null) {
         preview.appendChild(veil);
     }
 
-    if (!interactive) star.tabIndex = -1;
+    if (!interactive) {
+        star.tabIndex = -1;
+        copy.tabIndex = -1;
+    }
     return preview;
+}
+
+/** 다른 노드 UI에서도 선택창과 같은 LoRA 카드 모양을 쓸 수 있게 한다. */
+export async function makeLoraCardPreview(item, revealed = false, onReveal = null, onCopyWords = null) {
+    addStyles();
+    const settings = await loadSettings();
+    const blur = !revealed && settings.blurAdult !== false && item.adult;
+    return makePreview(item, false, blur, onReveal, onCopyWords);
 }
 
 /** 바이트를 사람이 읽는 크기로. */
@@ -713,7 +740,8 @@ ${t("detailMore")}: ${t("hintRightClick")}`; card.tabIndex = 0; card.setAttribut
         }
 
         const syncAdultButton = () => {
-            adultBtn.classList.toggle("on", blurAdult);
+            // 빨간 활성 상태는 성인 이미지를 보여주는 상태다.
+            adultBtn.classList.toggle("on", !blurAdult);
             adultBtn.title = blurAdult ? t("adultBlurOn") : t("adultBlurOff");
         };
         adultBtn.onclick = () => {

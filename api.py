@@ -128,6 +128,15 @@ def _is_adult(metadata):
     return (civitai.get("model") or {}).get("nsfw") is True
 
 
+def _trained_words(metadata):
+    words = metadata.get("trained_words") or metadata.get("trigger_words")
+    if not words:
+        words = (metadata.get("civitai") or {}).get("trainedWords") or []
+    if isinstance(words, str):
+        words = [word.strip() for word in words.split(",")]
+    return [word for word in words if isinstance(word, str) and word.strip()]
+
+
 def _lora_info(name):
     full = folder_paths.get_full_path("loras", name)
     if full is None or not os.path.isfile(full):
@@ -160,6 +169,7 @@ def _lora_info(name):
         "title": metadata.get("model_name") or metadata.get("file_name") or os.path.splitext(os.path.basename(name))[0],
         "base_model": metadata.get("base_model") or civitai.get("baseModel") or "",
         "version": civitai.get("name") or "",
+        "trained_words": _trained_words(metadata),
         "tags": metadata.get("tags") or (civitai.get("model") or {}).get("tags") or [],
         "favorite": metadata.get("favorite") is True,
         "adult": _is_adult(metadata),
@@ -254,7 +264,7 @@ async def get_lora_detail(request):
         "preview_type": preview_type,
         "notes": metadata.get("notes") or "",
         "description": model.get("description") or civitai.get("description") or "",
-        "trained_words": [w for w in (civitai.get("trainedWords") or []) if isinstance(w, str)],
+        "trained_words": _trained_words(metadata),
         "tags": model.get("tags") or metadata.get("tags") or [],
         "creator": (civitai.get("creator") or {}).get("username") or "",
         "downloads": stats.get("downloadCount"),

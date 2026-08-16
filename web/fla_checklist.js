@@ -722,6 +722,18 @@ function rebuild(node) {
             rowOpts: {
                 margin: 18,
                 onChange: () => syncHidden(node),
+                onCopyWords: (text) => {
+                    const current = String(item.prompt ?? "").trim();
+                    item.prompt = current ? `${current}, ${text}` : text;
+                    const promptW = node.flaPromptWidgets?.[idx];
+                    if (promptW) {
+                        promptW.value = item.prompt;
+                        const el = promptW.inputEl ?? promptW.element;
+                        if (el) el.value = item.prompt;
+                    }
+                    syncHidden(node);
+                    node.setDirtyCanvas(true, true);
+                },
                 onRemove: (li) => {
                     item.loras.splice(li, 1);
                     rebuildAfterPointer(node);

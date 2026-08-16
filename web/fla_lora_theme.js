@@ -257,6 +257,14 @@ function rebuildLoraWidgets(node) {
         rowOpts: {
             margin: 10,
             onChange: () => syncHidden(node),
+            onCopyWords: (text) => {
+                const promptW = findWidget(node, "prompt");
+                if (!promptW) return;
+                const current = String(promptW.value ?? "").trim();
+                promptW.value = current ? `${current}, ${text}` : text;
+                promptW.callback?.(promptW.value);
+                syncHidden(node);
+            },
             onRemove: (idx) => {
                 node.flaLoras.splice(idx, 1);
                 rebuildAfterPointer(node);

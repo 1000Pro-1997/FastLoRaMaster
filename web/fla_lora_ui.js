@@ -8,11 +8,131 @@
  */
 import { app } from "../../scripts/app.js";
 import { t } from "./fla_i18n.js";
-import { pickLora } from "./fla_lora_picker.js";
+import { pickLora, makeLoraCardPreview } from "./fla_lora_picker.js";
 import { mouseGate, releaseWidgetCaptureSoon, guardMouse } from "./fla_widget_mouse.js";
 
 export const ROW_HEIGHT = 22;
 const BOX_PAD_Y = 4;
+const LORA_HOVER_DELAY = 300;
+const loraHoverCache = new Map();
+const loraHoverRevealed = new Set();
+
+let loraHoverTimer = null;
+let loraHoverHideTimer = null;
+let loraHoverCard = null;
+let loraHoverPath = null;
+let loraHoverToken = 0;
+let loraHoverCanvas = null;
+
+function hideLoraHover() {
+    clearTimeout(loraHoverTimer);
+    clearTimeout(loraHoverHideTimer);
+    loraHoverTimer = null;
+    loraHoverHideTimer = null;
+    loraHoverToken++;
+    loraHoverCard?.remove();
+    loraHoverCard = null;
+    loraHoverPath = null;
+}
+
+function scheduleLoraHoverHide() {
+    clearTimeout(loraHoverTimer);
+    clearTimeout(loraHoverHideTimer);
+    loraHoverTimer = null;
+    loraHoverToken++;
+    loraHoverHideTimer = setTimeout(hideLoraHover, LORA_HOVER_DELAY);
+}
+
+function keepLoraHover() {
+    clearTimeout(loraHoverHideTimer);
+    loraHoverHideTimer = null;
+}
+
+function addLoraHoverStyles() {
+    if (document.getElementById("fla-lora-hover-style")) return;
+    const style = document.createElement("style");
+    style.id = "fla-lora-hover-style";
+    style.textContent = `
+      .fla-lora-hover{position:fixed;z-index:100000;width:220px;overflow:hidden;border:1px solid #56606d;border-radius:9px;box-shadow:0 10px 30px #000c;pointer-events:auto}
+    `;
+    document.head.appendChild(style);
+}
+
+async function loraHoverData(path) {
+    if (!loraHoverCache.has(path)) {
+        loraHoverCache.set(path, fetch(`/fla/lora-detail?name=${encodeURIComponent(path)}`)
+            .then((res) => res.ok ? res.json() : null)
+            .catch(() => null));
+    }
+    return loraHoverCache.get(path);
+}
+
+async function showLoraHover(path, clientX, clientY, token, onCopyWords) {
+    const data = await loraHoverData(path);
+    if (token !== loraHoverToken || !data?.preview) return;
+
+    addLoraHoverStyles();
+    const card = document.createElement("div");
+    card.className = "fla-lora-hover";
+    const reveal = async () => {
+        loraHoverRevealed.add(path);
+        const openPreview = await makeLoraCardPreview(data, true, null, onCopyWords);
+        if (loraHoverCard === card) card.replaceChildren(openPreview);
+    };
+    const preview = await makeLoraCardPreview(data, loraHoverRevealed.has(path), reveal, onCopyWords);
+    if (token !== loraHoverToken) return;
+    card.append(preview);
+    document.body.appendChild(card);
+
+    const gap = 4;
+    const rect = card.getBoundingClientRect();
+    card.style.left = `${Math.min(clientX + gap, window.innerWidth - rect.width - gap)}px`;
+    card.style.top = `${Math.min(clientY + gap, window.innerHeight - rect.height - gap)}px`;
+    card.addEventListener("pointerenter", keepLoraHover);
+    card.addEventListener("pointerleave", scheduleLoraHoverHide);
+    loraHoverCard = card;
+    loraHoverPath = path;
+}
+
+function ensureLoraHover() {
+    const canvas = app.canvas?.canvas;
+    if (!canvas || canvas === loraHoverCanvas) return;
+    loraHoverCanvas = canvas;
+
+    canvas.addEventListener("pointermove", (event) => {
+        clearTimeout(loraHoverTimer);
+        loraHoverTimer = null;
+
+        const graph = app.canvas?.graph;
+        const scale = app.canvas?.ds?.scale;
+        const offset = app.canvas?.ds?.offset;
+        if (!graph || !scale || !offset) {
+            scheduleLoraHoverHide();
+            return;
+        }
+        const rect = canvas.getBoundingClientRect();
+        const graphX = (event.clientX - rect.left) / scale - offset[0];
+        const graphY = (event.clientY - rect.top) / scale - offset[1];
+        const node = graph.getNodeOnPos?.(graphX, graphY);
+        const widget = node?.getWidgetOnPos?.(graphX, graphY);
+        if (!widget?.flaLoraPath || !inBounds([graphX - node.pos[0]], widget.bounds?.name)) {
+            scheduleLoraHoverHide();
+            return;
+        }
+
+        keepLoraHover();
+        if (loraHoverCard && loraHoverPath === widget.flaLoraPath) return;
+        if (loraHoverCard) hideLoraHover();
+
+        const token = ++loraHoverToken;
+        loraHoverTimer = setTimeout(() => {
+            loraHoverTimer = null;
+            showLoraHover(widget.flaLoraPath, event.clientX, event.clientY, token, widget.flaCopyWords);
+        }, LORA_HOVER_DELAY);
+    });
+    canvas.addEventListener("pointerleave", scheduleLoraHoverHide);
+    for (const type of ["pointerdown", "wheel"]) canvas.addEventListener(type, hideLoraHover);
+}
 
 /** 속성 패널이 공유 위젯의 width 를 덮어써도 캔버스 폭에는 남기지 않는다. */
 function ignoreStoredWidth(widget) {
@@ -233,14 +353,17 @@ export function prettyLora(path) {
  *    bypassed  () => boolean. 참이면 켜져 있어도 회색 + 반투명으로 그린다
  *    onChange  값이 바뀌었을 때(토글·강도·경로). 저장 동기화용
  *    onRemove  (idx) => void. ✕ 를 눌렀을 때. 빼는 방법이 노드마다 다르다
+ *    onCopyWords (text) => void. hover 카드에서 트리거 단어를 복사했을 때
  */
 export function makeLoraRow(node, lora, idx, opts = {}) {
+    ensureLoraHover();
     const {
         margin = 10,
         rowFlag = "flaLoraRow",
         bypassed = () => false,
         onChange = () => { },
         onRemove = () => { },
+        onCopyWords = null,
     } = opts;
 
     // 강도 숫자를 좌우로 끌어 조절한다
@@ -251,6 +374,8 @@ export function makeLoraRow(node, lora, idx, opts = {}) {
         name: "fla_lora_" + idx,
         serialize: false,   // 값이 없는 표시용 위젯
         value: lora,
+        get flaLoraPath() { return lora.path; },
+        flaCopyWords: onCopyWords,
         // 그 줄의 y. 인라인 입력칸을 제자리에 띄우려면 필요하다.
         lastY: 0,
         // 마우스를 올리면 전체 경로를 보여준다. 이름은 폭에 맞춰 잘리기 때문이다.
