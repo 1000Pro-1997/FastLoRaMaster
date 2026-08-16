@@ -171,6 +171,78 @@ async def get_lora_library(request):
     return web.json_response({"items": items})
 
 
+@routes.get("/fla/lora-detail")
+async def get_lora_detail(request):
+    """모델 상세 창에 필요한 정보만 추려서 준다.
+
+    메타데이터 원본을 통째로 넘기면 수 MB 가 되기도 하므로
+    화면에 쓰는 항목만 골라 담는다.
+    """
+    name = request.query.get("name", "")
+    if name not in folder_paths.get_filename_list("loras"):
+        return web.json_response({"ok": False, "error": "LoRA not found"}, status=404)
+
+    full = folder_paths.get_full_path("loras", name)
+    stem = os.path.splitext(full)[0]
+    metadata = {}
+    metadata_path = stem + ".metadata.json"
+    if os.path.isfile(metadata_path):
+        try:
+            with open(metadata_path, "r", encoding="utf-8") as f:
+                metadata = json.load(f)
+        except (OSError, ValueError):
+            metadata = {}
+
+    civitai = metadata.get("civitai") or {}
+    model = civitai.get("model") or {}
+    stats = civitai.get("stats") or {}
+
+    # 예시 이미지. 원격 URL 이라 등급을 함께 넘겨 프론트에서 가릴 수 있게 한다.
+    images = []
+    for image in (civitai.get("images") or []):
+        url = image.get("url")
+        if not isinstance(url, str) or not url.startswith("http"):
+            continue
+        meta = image.get("meta") or {}
+        images.append({
+            "url": url,
+            "width": image.get("width"),
+            "height": image.get("height"),
+            "type": image.get("type") or "image",
+            "nsfw_level": image.get("nsfwLevel") if isinstance(image.get("nsfwLevel"), int) else 0,
+            "prompt": meta.get("prompt") or "",
+            "negative": meta.get("negativePrompt") or "",
+            "sampler": meta.get("sampler") or "",
+            "steps": meta.get("steps"),
+            "cfg": meta.get("cfgScale"),
+            "seed": meta.get("seed"),
+        })
+
+    return web.json_response({
+        "ok": True,
+        "name": name,
+        "title": metadata.get("model_name") or metadata.get("file_name") or os.path.basename(stem),
+        "folder": os.path.dirname(name).replace("\\", "/"),
+        "file_name": os.path.basename(full),
+        "size": metadata.get("size") or os.path.getsize(full),
+        "sha256": metadata.get("sha256") or "",
+        "base_model": metadata.get("base_model") or civitai.get("baseModel") or "",
+        "version": civitai.get("name") or "",
+        "adult": _is_adult(metadata),
+        "notes": metadata.get("notes") or "",
+        "description": model.get("description") or civitai.get("description") or "",
+        "trained_words": [w for w in (civitai.get("trainedWords") or []) if isinstance(w, str)],
+        "tags": model.get("tags") or metadata.get("tags") or [],
+        "creator": (civitai.get("creator") or {}).get("username") or "",
+        "downloads": stats.get("downloadCount"),
+        "likes": stats.get("thumbsUpCount"),
+        "published": civitai.get("publishedAt") or civitai.get("createdAt") or "",
+        "model_id": civitai.get("modelId"),
+        "version_id": civitai.get("id"),
+        "images": images,
+    })
+
+
 @routes.post("/fla/lora-favorite")
 async def post_lora_favorite(request):
     try:
