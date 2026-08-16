@@ -69,3 +69,17 @@ export function releaseWidgetCaptureSoon() {
         releaseWidgetCapture();
     });
 }
+
+/** 위젯을 통째로 다시 만들기 직전에 부른다.
+ *
+ *  rebuild 는 화면의 위젯 객체를 전부 새로 만든다. 그런데 프론트엔드가
+ *  잡아둔 canvas.node_widget 은 옛 위젯을 계속 가리키고 있어서,
+ *  그 뒤의 pointermove 가 이미 화면에서 사라진 위젯으로 전달된다.
+ *  잡혀 있던 위젯이 이 노드 것이면 놓아준다.
+ */
+export function dropCaptureFor(node) {
+    const canvas = app?.canvas;
+    if (!canvas?.node_widget) return;
+    if (canvas.node_widget[0] !== node) return;
+    canvas.node_widget = null;
+}

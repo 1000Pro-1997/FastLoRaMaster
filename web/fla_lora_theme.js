@@ -1,6 +1,6 @@
 import { app } from "../../scripts/app.js";
 import { t } from "./fla_i18n.js";
-import { mouseGate, releaseWidgetCaptureSoon } from "./fla_widget_mouse.js";
+import { mouseGate, releaseWidgetCaptureSoon, dropCaptureFor } from "./fla_widget_mouse.js";
 // 로라 목록 UI 는 FLAChecklist 와 공용이다. 고치려면 fla_lora_ui.js 를 본다.
 import {
     ROW_HEIGHT, api, findWidget, notify, pickFromList, drawRoundedRect,
@@ -208,6 +208,9 @@ function tone(node, color, grey = "#2a2a2a") {
 
 /** 로라 목록 UI를 다시 그린다. */
 function rebuildLoraWidgets(node) {
+    // 위젯을 새로 만들면 프론트엔드가 잡아둔 옛 위젯은 죽은 참조가 된다
+    dropCaptureFor(node);
+
     // 다시 그리는 동안 노드 크기가 튀지 않도록 현재 크기를 기억해둔다
     const keepWidth = node.size?.[0] ?? MIN_NODE_WIDTH;
     const keepHeight = node.size?.[1] ?? 0;

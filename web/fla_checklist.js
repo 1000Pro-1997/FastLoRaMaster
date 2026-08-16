@@ -1,7 +1,7 @@
 import { app } from "../../scripts/app.js";
 import { ComfyWidgets } from "../../scripts/widgets.js";
 import { t } from "./fla_i18n.js";
-import { mouseGate } from "./fla_widget_mouse.js";
+import { mouseGate, dropCaptureFor } from "./fla_widget_mouse.js";
 // 로라 목록 UI 는 FLALoraTheme 과 공용이다. 고치려면 fla_lora_ui.js 를 본다.
 import {
     ROW_HEIGHT, findWidget, drawRoundedRect,
@@ -653,6 +653,9 @@ function makeHeaderRow(node) {
 /** 화면 전체를 다시 만든다.
  *  머리글 → 항목들(열려 있으면 그 아래 설정 패널) → 추가 버튼. */
 function rebuild(node) {
+    // 위젯을 새로 만들면 프론트엔드가 잡아둔 옛 위젯은 죽은 참조가 된다
+    dropCaptureFor(node);
+
     // 크기와 줄 위치가 확정될 때까지 DOM 입력칸을 감춰둔다
     node.flaBuilding = true;
 
