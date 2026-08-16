@@ -26,7 +26,9 @@ export const ROW_COLORS = {
     onEdge: "#3f6146",   // 켜진 로라 테두리
     off: "#2a2a2a",      // 꺼진 로라 바탕
     offEdge: "#3a3a3a",  // 꺼진 로라 테두리
-    del: "#a66",         // 삭제 ✕
+    del: "#a66",         // 삭제 ✕ (구버전 호환)
+    delBg: "#7a2f2f",    // 삭제 버튼 바탕
+    delEdge: "#a04a4a",  // 삭제 버튼 테두리
 };
 
 /** REST 응답을 JSON 으로 풀어준다. 실패하면 서버가 준 error 문구를 던진다. */
@@ -209,11 +211,16 @@ export function makeLoraRow(node, lora, idx, opts = {}) {
         onRemove = () => { },
     } = opts;
 
+    // 강도 숫자를 좌우로 끌어 조절한다
+    const drag = makeDragValue({ step: 6, amount: 0.01 });
+
     const widget = {
         type: "custom",
         name: "fla_lora_" + idx,
         serialize: false,   // 값이 없는 표시용 위젯
         value: lora,
+        // 그 줄의 y. 인라인 입력칸을 제자리에 띄우려면 필요하다.
+        lastY: 0,
         // 마우스를 올리면 전체 경로를 보여준다. 이름은 폭에 맞춰 잘리기 때문이다.
         tooltip: "",
         // 클릭 판정 영역. draw 때마다 갱신된다.
@@ -227,6 +234,7 @@ export function makeLoraRow(node, lora, idx, opts = {}) {
         draw(ctx, n, widgetWidth, posY, height) {
             const inner = INNER;
             const midY = posY + height * 0.5;
+            this.lastY = posY;
             // 노드 실제 폭을 기준으로 그린다. 인자로 오는 폭은 버전마다 다르다.
             const width = node.size?.[0] ?? widgetWidth;
             const off = bypassed();
@@ -247,13 +255,17 @@ export function makeLoraRow(node, lora, idx, opts = {}) {
             if (!lora.enabled) ctx.globalAlpha = 0.45;
             else if (off) ctx.globalAlpha = 0.5;
 
-            // 오른쪽 끝: 삭제 버튼
-            const delW = 14;
+            // 오른쪽 끝: 삭제 버튼. 빨간 둥근 네모에 흰 ✕.
+            const delW = 16;
             const delX = width - margin - inner - delW;
-            ctx.fillStyle = ROW_COLORS.del;
+            drawRoundedRect(ctx, delX, posY + 4, delW, height - 8,
+                ROW_COLORS.delBg, ROW_COLORS.delEdge);
+            ctx.fillStyle = "#fff";
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
+            ctx.font = "11px Arial";
             ctx.fillText("✕", delX + delW / 2, midY);
+            ctx.font = "";
             this.bounds.del = [delX, delW];
 
             // 그 왼쪽: 강도 조절
@@ -275,11 +287,32 @@ export function makeLoraRow(node, lora, idx, opts = {}) {
         },
 
         mouse(event, pos, n) {
-            // 반환값은 dirty_canvas 로만 쓰인다. up 에서만 한 번 처리한다.
             const gate = mouseGate(event);
-            if (gate === "down") return;
+
+            // 숫자 위에서 누르면 드래그 조절을 준비한다
+            if (gate === "down") {
+                if (inBounds(pos, this.bounds.num)) drag.begin(pos);
+                return;
+            }
+
+            // 누른 채 좌우로 움직이면 0.01 씩 바뀐다
+            if (gate === null && drag.active) {
+                const delta = drag.move(pos);
+                if (delta) {
+                    lora.strength = roundStrength(lora.strength + delta);
+                    onChange();
+                    node.setDirtyCanvas(true, true);
+                }
+                return true;
+            }
+
             if (gate !== "up") return false;
+
+            // 드래그였으면 클릭으로 치지 않는다(입력칸이 뜨면 안 된다)
+            if (drag.active && drag.end()) return true;
+
             return handleLoraRowClick(node, lora, this, pos, {
+                node, widgetY: this.lastY,
                 onChange, onRemove: () => onRemove(idx),
             });
         },
@@ -291,7 +324,7 @@ export function makeLoraRow(node, lora, idx, opts = {}) {
 
 /** 로라 행 클릭 처리. 토글 · 삭제 · 강도 · 이름(교체) 순으로 본다. */
 export function handleLoraRowClick(node, lora, widget, pos, opts = {}) {
-    const { onChange = () => { }, onRemove = () => { } } = opts;
+    const { onChange = () => { }, onRemove = () => { }, widgetY } = opts;
     const touched = () => {
         onChange();
         node.setDirtyCanvas(true, true);
@@ -317,13 +350,12 @@ export function handleLoraRowClick(node, lora, widget, pos, opts = {}) {
         return true;
     }
     if (inBounds(pos, widget.bounds.num)) {
-        // 숫자를 직접 입력받는다
-        releaseWidgetCaptureSoon();
-        const v = window.prompt(t("strength"), String(lora.strength));
-        if (v !== null && !isNaN(parseFloat(v))) {
-            lora.strength = parseFloat(v);
-            touched();
-        }
+        // 그 자리에 입력칸을 띄운다
+        inlineEditNumber(node, widget.bounds.num, widgetY ?? widget.lastY ?? 0,
+            lora.strength, (v) => {
+                lora.strength = v;
+                touched();
+            });
         return true;
     }
     if (inBounds(pos, widget.bounds.name)) {
@@ -383,6 +415,8 @@ export function buildLoraBox(node, opts = {}) {
         extra = [],
         tooltip = "",
     } = opts;
+    // 머리글은 로라 행과 같은 여백을 써야 세로줄이 맞는다
+    const margin = rowOpts.margin ?? 10;
 
     const list = loras();
     const onCount = list.filter((l) => l.enabled).length;
@@ -391,18 +425,136 @@ export function buildLoraBox(node, opts = {}) {
 
     const made = [];
 
-    // ① "로라 적용" 토글 — 맨 위
-    const allW = node.addWidget(
-        "toggle",
-        t("applyLora") + `  (${onCount}/${list.length})`,
-        on,
-        (v) => setEnabled(v),
-    );
+    // ① 머리글 줄 — 토글 · "로라 적용 (n/m)" · 전체 강도 조절
+    //    캡슐(배경)을 그리지 않아 박스 안에서 제목처럼 보이게 한다.
+    const headDrag = makeDragValue({ step: 6, amount: 0.01 });
+    const allW = {
+        type: "custom",
+        name: "fla_lora_head",
+        serialize: false,   // 실제 값은 파이썬 쪽 위젯이 들고 있다
+        tooltip,
+        lastY: 0,
+        bounds: { toggle: null, all: null, dec: null, inc: null },
+
+        computeSize() {
+            return [0, ROW_HEIGHT];
+        },
+
+        draw(ctx, n, widgetWidth, posY, height) {
+            const midY = posY + height * 0.5;
+            const width = node.size?.[0] ?? widgetWidth;
+            this.lastY = posY;
+
+            // 캡슐 없음: 바탕을 칠하지 않는다
+            let posX = margin;
+            this.bounds.toggle = drawToggle(ctx, posX, posY, height, on);
+            posX += this.bounds.toggle[1] + INNER;
+
+            ctx.save();
+            if (!on) ctx.globalAlpha = 0.45;
+            ctx.textBaseline = "middle";
+
+            // 오른쪽: 전체 강도 조절 (◀ 전체 ▶)
+            let rightEdge = width - margin - INNER;
+            if (list.length) {
+                const arrowW = ARROW_W;
+                const capLabel = t("allStrength");
+                ctx.font = "11px Arial";
+                const capW = ctx.measureText(capLabel).width + 10;
+
+                // ▶ (맨 오른쪽)
+                const incX = rightEdge - arrowW;
+                ctx.fillStyle = LiteGraph.WIDGET_TEXT_COLOR ?? "#DDD";
+                ctx.fill(new Path2D(
+                    `M ${incX} ${midY - ARROW_H / 2} l ${arrowW} ${ARROW_H / 2} l -${arrowW} ${ARROW_H / 2} v -${ARROW_H} z`
+                ));
+                this.bounds.inc = [incX, arrowW];
+
+                // 캡슐 (가운데)
+                const capX = incX - INNER - capW;
+                drawRoundedRect(ctx, capX, posY + 4, capW, height - 8,
+                    "#333a45", "#4a5568");
+                ctx.fillStyle = "#bcd";
+                ctx.textAlign = "center";
+                ctx.fillText(capLabel, capX + capW / 2, midY);
+                this.bounds.all = [capX, capW];
+
+                // ◀ (왼쪽)
+                const decX = capX - INNER - arrowW;
+                ctx.fillStyle = LiteGraph.WIDGET_TEXT_COLOR ?? "#DDD";
+                ctx.fill(new Path2D(
+                    `M ${decX} ${midY} l ${arrowW} ${ARROW_H / 2} l 0 -${ARROW_H} L ${decX} ${midY} z`
+                ));
+                this.bounds.dec = [decX, arrowW];
+
+                rightEdge = decX - INNER * 2;
+            } else {
+                this.bounds.all = this.bounds.dec = this.bounds.inc = null;
+            }
+
+            // 왼쪽: 제목
+            ctx.font = "";
+            ctx.fillStyle = LiteGraph.WIDGET_TEXT_COLOR ?? "#DDD";
+            ctx.textAlign = "left";
+            const label = t("applyLora") + `  (${onCount}/${list.length})`;
+            ctx.fillText(fitText(ctx, label, Math.max(10, rightEdge - posX)), posX, midY);
+
+            ctx.restore();
+        },
+
+        /** 모든 로라 강도를 delta 만큼 함께 올리거나 내린다(상대 이동).
+         *  전체 조절로 0 아래까지 끌려가면 효과가 반전돼버리므로 0 에서 멈춘다.
+         *  (개별 값은 직접 입력으로 음수를 줄 수 있다) */
+        shiftAll(delta) {
+            let changed = false;
+            for (const l of list) {
+                const next = Math.max(0, roundStrength(l.strength + delta));
+                if (next !== l.strength) {
+                    l.strength = next;
+                    changed = true;
+                }
+            }
+            if (changed) {
+                rowOpts.onChange?.();
+                node.setDirtyCanvas(true, true);
+            }
+        },
+
+        mouse(event, pos, n) {
+            const gate = mouseGate(event);
+
+            if (gate === "down") {
+                if (inBounds(pos, this.bounds.all)) headDrag.begin(pos);
+                return;
+            }
+
+            // 캡슐을 누른 채 좌우로 끌면 전체가 상대적으로 움직인다
+            if (gate === null && headDrag.active) {
+                const delta = headDrag.move(pos);
+                if (delta) this.shiftAll(delta);
+                return true;
+            }
+
+            if (gate !== "up") return false;
+
+            if (headDrag.active && headDrag.end()) return true;
+
+            if (inBounds(pos, this.bounds.toggle)) {
+                setEnabled(!on);
+                return true;
+            }
+            if (inBounds(pos, this.bounds.dec)) {
+                this.shiftAll(-0.05);
+                return true;
+            }
+            if (inBounds(pos, this.bounds.inc)) {
+                this.shiftAll(0.05);
+                return true;
+            }
+            return false;
+        },
+    };
     allW[rowFlag] = true;
-    // 실제 값은 파이썬 쪽 위젯이 들고 있다. 저장 슬롯을 차지하지 않게 한다.
-    allW.serialize = false;
-    if (tooltip) allW.tooltip = tooltip;
-    paint(allW, on ? BOX_COLORS.header : BOX_COLORS.grey);
     made.push(allW);
 
     // ② 로라 목록 — 가운데
@@ -464,4 +616,113 @@ export function buildLoraBox(node, opts = {}) {
 
     // 박스는 다른 줄보다 먼저 그려져야 하므로 맨 앞에 둔다
     return [boxW, ...made];
+}
+
+/** 강도 값을 0.00~ 범위로 다듬는다. 소수 둘째 자리까지만 쓴다. */
+export function roundStrength(v) {
+    return Math.round(v * 100) / 100;
+}
+
+/** 캔버스 위에 숫자 입력칸을 띄운다.
+ *
+ *  bounds 는 [x, width](노드 기준), rowY 는 그 줄의 y(노드 기준)다.
+ *  DOM 요소라 캔버스와 좌표계가 다르므로 화면 좌표로 변환해 얹는다.
+ */
+export function inlineEditNumber(node, bounds, rowY, value, onDone) {
+    // 입력칸이 캔버스를 덮어 pointerup 이 오지 않는다
+    releaseWidgetCaptureSoon();
+
+    const canvas = app.canvas;
+    const el = document.createElement("input");
+    el.type = "number";
+    el.step = "0.05";
+    el.value = String(value ?? "");
+
+    const scale = canvas.ds.scale;
+    const [ox, oy] = canvas.ds.offset;
+    const rect = canvas.canvas.getBoundingClientRect();
+    const x = (node.pos[0] + bounds[0] + ox) * scale + rect.left;
+    const y = (node.pos[1] + rowY + oy) * scale + rect.top;
+
+    Object.assign(el.style, {
+        position: "fixed",
+        left: `${x}px`,
+        top: `${y}px`,
+        width: `${Math.max(40, bounds[1]) * scale}px`,
+        height: `${ROW_HEIGHT * scale}px`,
+        fontSize: `${12 * scale}px`,
+        textAlign: "center",
+        background: "#222",
+        color: "#DDD",
+        border: "1px solid #89B",
+        borderRadius: "4px",
+        zIndex: 10000,
+        outline: "none",
+    });
+
+    document.body.appendChild(el);
+    el.focus();
+    el.select();
+
+    let done = false;
+    const finish = (commit) => {
+        if (done) return;
+        done = true;
+        const num = parseFloat(el.value);
+        el.remove();
+        if (commit && !isNaN(num)) onDone(roundStrength(num));
+        node.setDirtyCanvas(true, true);
+    };
+    el.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") finish(true);
+        else if (e.key === "Escape") finish(false);
+        e.stopPropagation();
+    });
+    el.addEventListener("blur", () => finish(true));
+    return el;
+}
+
+/** 좌우 드래그로 값을 조절하는 상태 기계.
+ *
+ *  프론트엔드는 위젯을 누르고 있는 동안 pointermove 를 그 위젯의 mouse() 로
+ *  계속 보내준다(LGraphCanvas.processMouseMove 의 node_widget 분기).
+ *  그 점을 이용해 down 에서 시작점을 적어두고, move 마다 x 차이를 값으로 바꾼다.
+ *
+ *  step 픽셀만큼 움직일 때 amount 만큼 변한다.
+ */
+export function makeDragValue({ step = 6, amount = 0.01 } = {}) {
+    let startX = null;
+    let acc = 0;
+    return {
+        /** 드래그 시작. 눌린 지점을 기억한다. */
+        begin(pos) {
+            startX = pos[0];
+            acc = 0;
+        },
+        /** 시작한 적 있는지. up 에서 "드래그였는지 클릭이었는지" 판단에 쓴다. */
+        get active() {
+            return startX !== null;
+        },
+        /** 실제로 값이 바뀔 만큼 움직였는지. 클릭과 구분한다. */
+        get moved() {
+            return Math.abs(acc) >= 1;
+        },
+        /** 이동량을 값 변화로 바꾼다. 바뀐 만큼(delta)을 돌려준다. */
+        move(pos) {
+            if (startX === null) return 0;
+            const dx = pos[0] - startX;
+            const steps = Math.trunc(dx / step);
+            if (steps === 0) return 0;
+            // 소비한 만큼 시작점을 옮겨 남은 픽셀이 누적되게 한다
+            startX += steps * step;
+            acc += steps;
+            return steps * amount;
+        },
+        end() {
+            const wasMoved = this.moved;
+            startX = null;
+            acc = 0;
+            return wasMoved;
+        },
+    };
 }
