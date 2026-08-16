@@ -58,6 +58,7 @@ function stateKey(node) {
 /** 지금 상태를 "저장된 상태"로 표시한다. */
 function markClean(node) {
     node.flaSavedKey = stateKey(node);
+    node.flaSavedData = collect(node);
     updateSaveButton(node);
 }
 
@@ -521,6 +522,13 @@ app.registerExtension({
                 }
             };
 
+            const actRevert = () => {
+                if (node.flaSavedKey === stateKey(node) || !node.flaSavedData) return;
+                applyData(node, node.flaSavedData);
+                rebuildLoraWidgets(node);
+                markClean(node);
+            };
+
             // t("askThemePresetShort") 형식으로 입력받는다. 테마가 없으면 새로 만든다.
             const actNew = async () => {
                 const input = askName(t("askThemePreset"), themeW.value + "/");
@@ -650,12 +658,12 @@ app.registerExtension({
                 ["🗑 " + t("remove"), actDelete],
             ];
 
-            // 저장 / 옵션을 한 줄에 좌우로 나눠 그린다.
+            // 저장 / 되돌리기 / 옵션을 한 줄에 나눠 그린다.
             const btnRow = {
                 type: "custom",
                 name: "fla_btn_row",
                 serialize: false,   // 값이 없는 표시용 위젯
-                bounds: { save: null, opts: null },
+                bounds: { save: null, revert: null, opts: null },
                 computeSize() {
                     return [0, ROW_HEIGHT - LAYOUT_PAD];
                 },
@@ -665,7 +673,7 @@ app.registerExtension({
                     const width = node.size?.[0] ?? widgetWidth;
                     const off = isNodeOff(node);
                     const dirty = node.flaSavedKey !== stateKey(node);
-                    const half = (width - margin * 2 - gap) / 2;
+                    const third = (width - margin * 2 - gap * 2) / 3;
                     const midY = posY + height * 0.5;
 
                     ctx.save();
@@ -674,22 +682,31 @@ app.registerExtension({
 
                     // 왼쪽: 저장
                     const sx = margin;
-                    drawRoundedRect(ctx, sx, posY, half, height,
+                    drawRoundedRect(ctx, sx, posY, third, height,
                         off ? "#2a2a2a" : (dirty ? BTN.save : "#2f2f2f"),
                         off ? "#3a3a3a" : (dirty ? "#4a7a52" : "#3a3a3a"));
-                    this.bounds.save = [sx, half];
+                    this.bounds.save = [sx, third];
                     // 디스크 모양은 항상 보여준다. 변경 여부는 버튼 색으로 알 수 있다.
-                    ctx.fillStyle = off ? "#666" : (LiteGraph.WIDGET_TEXT_COLOR ?? "#DDD");
-                    ctx.fillText("💾 " + t("save"), sx + half / 2, midY);
+                    ctx.fillStyle = off || !dirty ? "#666" : (LiteGraph.WIDGET_TEXT_COLOR ?? "#DDD");
+                    ctx.fillText("💾 " + t("save"), sx + third / 2, midY);
+
+                    // 가운데: 최근 저장 상태로 되돌리기
+                    const rx = sx + third + gap;
+                    drawRoundedRect(ctx, rx, posY, third, height,
+                        off ? "#2a2a2a" : (dirty ? BTN.new : "#2f2f2f"),
+                        off ? "#3a3a3a" : (dirty ? "#7a5a3a" : "#3a3a3a"));
+                    this.bounds.revert = [rx, third];
+                    ctx.fillStyle = off || !dirty ? "#666" : (LiteGraph.WIDGET_TEXT_COLOR ?? "#DDD");
+                    ctx.fillText("↶ " + t("revert"), rx + third / 2, midY);
 
                     // 오른쪽: 옵션
-                    const ox = sx + half + gap;
-                    drawRoundedRect(ctx, ox, posY, half, height,
+                    const ox = rx + third + gap;
+                    drawRoundedRect(ctx, ox, posY, third, height,
                         off ? "#2a2a2a" : BTN.rename,
                         off ? "#3a3a3a" : "#4a5a7a");
-                    this.bounds.opts = [ox, half];
+                    this.bounds.opts = [ox, third];
                     ctx.fillStyle = off ? "#666" : (LiteGraph.WIDGET_TEXT_COLOR ?? "#DDD");
-                    ctx.fillText("⚙ " + t("options"), ox + half / 2, midY);
+                    ctx.fillText("⚙ " + t("options"), ox + third / 2, midY);
 
                     ctx.restore();
                 },
@@ -700,6 +717,10 @@ app.registerExtension({
                     if (inBounds(pos, this.bounds.save)) {
                         // askName 이 필요할 때 캡처를 풀어준다
                         actSave();
+                        return true;
+                    }
+                    if (inBounds(pos, this.bounds.revert)) {
+                        actRevert();
                         return true;
                     }
                     if (inBounds(pos, this.bounds.opts)) {

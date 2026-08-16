@@ -870,6 +870,7 @@ app.registerExtension({
         nodeType.prototype.onSerialize = function (o) {
             onSerialize?.apply(this, arguments);
             o.flaItems = this.flaItems ?? [];
+            o.flaHeightSlack = Math.max(0, (this.size?.[1] ?? 0) - (this.flaNeededHeight ?? 0));
         };
 
         // 워크플로를 다시 열 때 항목을 복원한다
@@ -886,17 +887,13 @@ app.registerExtension({
                 : normalizeItems(o.flaItems ?? []);
             node.flaOpen = -1;
 
-            // 워크플로에 저장된 크기를 그대로 되살린다.
-            //
-            // flaNeededHeight 는 rebuild 가 "지금 내용에 필요한 높이"로 이미 채워뒀다.
-            // 여기서 다시 계산해 덮어쓰면 안 된다. 크기를 saved 로 바꾼 뒤의 값이라
-            // 다음 rebuild 때 여백이 잘못 잡힌다.
-            const saved = o.size ? [o.size[0], o.size[1]] : null;
+            // 펼친 편집 패널의 높이는 복원하지 않는다. 사용자가 직접 늘린 여백만
+            // 접힌 상태의 필요 높이에 다시 더한다.
+            const savedWidth = o.size?.[0];
+            const savedSlack = Math.max(0, Number(o.flaHeightSlack) || 0);
             rebuild(node);
-            if (saved) {
-                node.size[0] = saved[0];
-                node.size[1] = saved[1];
-            }
+            if (savedWidth) node.size[0] = savedWidth;
+            node.size[1] = (node.flaNeededHeight ?? node.size[1]) + savedSlack;
         };
     },
 });

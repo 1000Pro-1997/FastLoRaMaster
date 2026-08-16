@@ -12,6 +12,17 @@ import { pickLora } from "./fla_lora_picker.js";
 import { mouseGate, releaseWidgetCaptureSoon, guardMouse } from "./fla_widget_mouse.js";
 
 export const ROW_HEIGHT = 22;
+const BOX_PAD_Y = 4;
+
+/** 속성 패널이 공유 위젯의 width 를 덮어써도 캔버스 폭에는 남기지 않는다. */
+function ignoreStoredWidth(widget) {
+    Object.defineProperty(widget, "width", {
+        configurable: true,
+        get: () => 0,
+        set: () => { },
+    });
+    return widget;
+}
 
 // 보이는 박스와 클릭 판정 영역을 맞추기 위한 보정값.
 //
@@ -257,8 +268,8 @@ export function makeLoraRow(node, lora, idx, opts = {}) {
             const inner = INNER;
             const midY = posY + height * 0.5;
             this.lastY = posY;
-            // 노드 실제 폭을 기준으로 그린다. 인자로 오는 폭은 버전마다 다르다.
-            const width = node.size?.[0] ?? widgetWidth;
+            // 클릭 판정과 같은 위젯 폭을 기준으로 오른쪽 고정칸을 배치한다.
+            const width = widgetWidth;
             const off = bypassed();
             const live = lora.enabled && !off;
 
@@ -473,7 +484,7 @@ export function buildLoraBox(node, opts = {}) {
         draw(ctx, n, widgetWidth, posY, passedHeight) {
             const height = rowHeight(passedHeight);
             const midY = posY + height * 0.5;
-            const width = node.size?.[0] ?? widgetWidth;
+            const width = widgetWidth;
             this.lastY = posY;
 
             // 캡슐 없음: 바탕을 칠하지 않는다
@@ -628,7 +639,7 @@ export function buildLoraBox(node, opts = {}) {
 
         draw(ctx, n, widgetWidth, posY, passedHeight) {
             const height = rowHeight(passedHeight);
-            const width = node.size?.[0] ?? widgetWidth;
+            const width = widgetWidth;
             drawRoundedRect(
                 ctx, margin, posY, width - margin * 2, height,
                 on ? BOX_COLORS.action : BOX_COLORS.grey,
@@ -662,6 +673,23 @@ export function buildLoraBox(node, opts = {}) {
         made.push(w);
     }
 
+    // 행 사이는 붙여두고 상자의 맨 위와 맨 아래에만 여백을 둔다.
+    const makeBoxPad = (name) => {
+        const pad = {
+            type: "custom",
+            name,
+            serialize: false,
+            computeSize() {
+                return [0, BOX_PAD_Y - 4];
+            },
+            draw() { },
+        };
+        pad[rowFlag] = true;
+        return pad;
+    };
+    made.unshift(makeBoxPad("fla_lora_pad_top"));
+    made.push(makeBoxPad("fla_lora_pad_bottom"));
+
     // 영역을 감싸는 테두리.
     // 높이를 차지하지 않는 위젯을 맨 앞에 두고, 거기서 영역 전체를 한 번에 그린다.
     // 각 위젯의 last_y 는 프론트엔드가 배치할 때 채워준다.
@@ -686,7 +714,7 @@ export function buildLoraBox(node, opts = {}) {
             return [0, -4];
         },
         draw(ctx, n, widgetWidth, posY) {
-            const width = node.size?.[0] ?? widgetWidth;
+            const width = widgetWidth;
             const top = (first.last_y ?? posY) - 3;
             // 마지막 줄의 높이는 종류에 따라 다르므로 실제 크기를 물어본다
             const lastH = last.computeSize?.()?.[1] ?? ROW_HEIGHT;
@@ -704,7 +732,7 @@ export function buildLoraBox(node, opts = {}) {
     boxW[rowFlag] = true;
 
     // 박스는 다른 줄보다 먼저 그려져야 하므로 맨 앞에 둔다
-    return [boxW, ...made];
+    return [boxW, ...made].map(ignoreStoredWidth);
 }
 
 /** 강도 값을 0.00~ 범위로 다듬는다. 소수 둘째 자리까지만 쓴다. */
@@ -724,7 +752,7 @@ export function inlineEditNumber(node, bounds, rowY, value, onDone) {
     const canvas = app.canvas;
     const el = document.createElement("input");
     el.type = "number";
-    el.step = "0.05";
+    el.step = "0.01";
     el.value = String(value ?? "");
 
     const scale = canvas.ds.scale;
@@ -767,6 +795,13 @@ export function inlineEditNumber(node, bounds, rowY, value, onDone) {
         else if (e.key === "Escape") finish(false);
         e.stopPropagation();
     });
+    el.addEventListener("wheel", (e) => {
+        e.preventDefault();
+        const current = parseFloat(el.value);
+        if (isNaN(current)) return;
+        el.value = String(roundStrength(current + (e.deltaY < 0 ? 0.01 : -0.01)));
+        el.select();
+    }, { passive: false });
     el.addEventListener("blur", () => finish(true));
     return el;
 }

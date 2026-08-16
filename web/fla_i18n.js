@@ -8,6 +8,7 @@ const STRINGS = {
     en: {
         // 공통
         save: "Save",
+        revert: "Revert",
         options: "Options",
         cancel: "Cancel",
         close: "Close",
@@ -127,6 +128,7 @@ const STRINGS = {
 
     ko: {
         save: "저장",
+        revert: "되돌리기",
         options: "옵션",
         cancel: "취소",
         close: "닫기",
@@ -243,6 +245,7 @@ const STRINGS = {
 
     zh: {
         save: "保存",
+        revert: "还原",
         options: "选项",
         cancel: "取消",
         close: "关闭",
