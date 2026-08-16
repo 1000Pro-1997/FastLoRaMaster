@@ -13,6 +13,16 @@ import { mouseGate, releaseWidgetCaptureSoon, guardMouse } from "./fla_widget_mo
 
 export const ROW_HEIGHT = 22;
 
+// 보이는 박스와 클릭 판정 영역을 맞추기 위한 보정값.
+//
+// 배치:  computedHeight = computeSize()[1] + 4        (_arrangeWidgets)
+// 판정:  last_y - 2  ~  last_y + computedHeight - 2   (getWidgetOnPos)
+// 그림:  posY        ~  posY + ROW_HEIGHT             (우리 draw)
+//
+// posY === last_y 이므로 아래끝을 맞추려면 computedHeight = ROW_HEIGHT + 2,
+// 즉 computeSize 는 ROW_HEIGHT - 2 를 돌려줘야 한다.
+export const LAYOUT_PAD = 2;
+
 // 강도 조절부(◀ 0.90 ▶) 치수. drawNumber 가 쓴다.
 export const ARROW_W = 9;
 export const ARROW_H = 10;
@@ -30,6 +40,17 @@ export const ROW_COLORS = {
     delBg: "#7a2f2f",    // 삭제 버튼 바탕
     delEdge: "#a04a4a",  // 삭제 버튼 테두리
 };
+
+/** 그릴 때 쓸 줄 높이.
+ *
+ *  프론트엔드는 draw 에 LiteGraph.NODE_WIDGET_HEIGHT(20) 상수를 넘긴다.
+ *  하지만 배치(_arrangeWidgets)와 히트 판정(getWidgetOnPos)은
+ *  computeSize()[1] 을 쓰므로, 상수로 그리면 보이는 박스와 눌리는 영역이
+ *  어긋난다. 우리 줄은 ROW_HEIGHT 로 그려야 한다.
+ */
+function rowHeight(passed) {
+    return ROW_HEIGHT;
+}
 
 /** REST 응답을 JSON 으로 풀어준다. 실패하면 서버가 준 error 문구를 던진다. */
 export async function api(url, options) {
@@ -228,10 +249,11 @@ export function makeLoraRow(node, lora, idx, opts = {}) {
 
         // 폭은 요구하지 않는다(0). 0 을 돌려줘야 사용자가 좁혀놓은 폭이 유지된다.
         computeSize() {
-            return [0, ROW_HEIGHT];
+            return [0, ROW_HEIGHT - LAYOUT_PAD];
         },
 
-        draw(ctx, n, widgetWidth, posY, height) {
+        draw(ctx, n, widgetWidth, posY, passedHeight) {
+            const height = rowHeight(passedHeight);
             const inner = INNER;
             const midY = posY + height * 0.5;
             this.lastY = posY;
@@ -445,10 +467,11 @@ export function buildLoraBox(node, opts = {}) {
         bounds: { toggle: null, all: null, dec: null, inc: null },
 
         computeSize() {
-            return [0, ROW_HEIGHT];
+            return [0, ROW_HEIGHT - LAYOUT_PAD];
         },
 
-        draw(ctx, n, widgetWidth, posY, height) {
+        draw(ctx, n, widgetWidth, posY, passedHeight) {
+            const height = rowHeight(passedHeight);
             const midY = posY + height * 0.5;
             const width = node.size?.[0] ?? widgetWidth;
             this.lastY = posY;
@@ -600,10 +623,11 @@ export function buildLoraBox(node, opts = {}) {
         bounds: { all: null },
 
         computeSize() {
-            return [0, ROW_HEIGHT];
+            return [0, ROW_HEIGHT - LAYOUT_PAD];
         },
 
-        draw(ctx, n, widgetWidth, posY, height) {
+        draw(ctx, n, widgetWidth, posY, passedHeight) {
+            const height = rowHeight(passedHeight);
             const width = node.size?.[0] ?? widgetWidth;
             drawRoundedRect(
                 ctx, margin, posY, width - margin * 2, height,

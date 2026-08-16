@@ -3,7 +3,7 @@ import { t } from "./fla_i18n.js";
 import { mouseGate, releaseWidgetCaptureSoon, dropCaptureFor, guardNodeWidgets } from "./fla_widget_mouse.js";
 // 로라 목록 UI 는 FLAChecklist 와 공용이다. 고치려면 fla_lora_ui.js 를 본다.
 import {
-    ROW_HEIGHT, api, findWidget, notify, pickFromList, drawRoundedRect,
+    ROW_HEIGHT, LAYOUT_PAD, api, findWidget, notify, pickFromList, drawRoundedRect,
     drawToggle, fitText, inBounds, isNodeOff,
     buildLoraBox, paint,
 } from "./fla_lora_ui.js";
@@ -378,7 +378,7 @@ app.registerExtension({
                 tooltip: t("tipPromptToggle"),
                 bounds: { toggle: null, name: null },
                 computeSize() {
-                    return [0, ROW_HEIGHT];
+                    return [0, ROW_HEIGHT - LAYOUT_PAD];
                 },
                 draw(ctx, n, widgetWidth, posY, height) {
                     const margin = 10;
@@ -657,7 +657,7 @@ app.registerExtension({
                 serialize: false,   // 값이 없는 표시용 위젯
                 bounds: { save: null, opts: null },
                 computeSize() {
-                    return [0, ROW_HEIGHT];
+                    return [0, ROW_HEIGHT - LAYOUT_PAD];
                 },
                 draw(ctx, n, widgetWidth, posY, height) {
                     const margin = 10;

@@ -4,7 +4,7 @@ import { t } from "./fla_i18n.js";
 import { mouseGate, dropCaptureFor, guardNodeWidgets } from "./fla_widget_mouse.js";
 // 로라 목록 UI 는 FLALoraTheme 과 공용이다. 고치려면 fla_lora_ui.js 를 본다.
 import {
-    ROW_HEIGHT, findWidget, drawRoundedRect,
+    ROW_HEIGHT, LAYOUT_PAD, findWidget, drawRoundedRect,
     drawToggle, drawNumber, fitText, inBounds, isNodeOff,
     buildLoraBox,
 } from "./fla_lora_ui.js";
@@ -95,7 +95,7 @@ function makeItemRow(node, item, idx) {
         bounds: { toggle: null, title: null, gear: null },
 
         computeSize() {
-            return [0, ROW_HEIGHT];
+            return [0, ROW_HEIGHT - LAYOUT_PAD];
         },
 
         draw(ctx, n, widgetWidth, posY, height) {
@@ -210,7 +210,7 @@ function makeButtonRow(node, name, buttons) {
         bounds: [],
 
         computeSize() {
-            return [0, ROW_HEIGHT];
+            return [0, ROW_HEIGHT - LAYOUT_PAD];
         },
 
         draw(ctx, n, widgetWidth, posY, height) {
@@ -564,7 +564,7 @@ function makeHeaderRow(node) {
         bounds: { toggle: null, lora: null },
 
         computeSize() {
-            return [0, ROW_HEIGHT];
+            return [0, ROW_HEIGHT - LAYOUT_PAD];
         },
 
         draw(ctx, n, widgetWidth, posY, height) {
