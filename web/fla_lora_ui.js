@@ -569,15 +569,57 @@ export function buildLoraBox(node, opts = {}) {
     });
 
     // ③ "＋ 로라 추가" — 맨 아래
-    const add = node.addWidget("button", t("addLora"), null, async () => {
+    //
+    //    addWidget("button") 을 쓰지 않는다. 네이티브 버튼의 콜백은
+    //    CanvasPointer 의 onClick 으로 실행되는데, 누르고 있는 시간이
+    //    bufferTime(32ms) 을 넘기면서 pointermove 가 한 번이라도 오면
+    //    드래그로 승격돼(_setDragStarted) onClick 대신 onDragEnd 가 불린다.
+    //    사람이 실제로 누르면 32ms 는 쉽게 넘기므로 콜백이 자주 씹힌다.
+    //    그래서 로라 행들과 같은 방식(직접 그리고 up 에서 처리)으로 만든다.
+    const openPicker = async () => {
         // 목록에서 고른 뒤에만 줄을 추가한다 (취소하면 아무 일도 없음)
         const choice = await pickLora();
         if (!choice) return;
         onAdd(choice);
-    });
+    };
+
+    const add = {
+        type: "custom",
+        name: "fla_lora_add",
+        serialize: false,   // 버튼이라 저장할 값이 없다
+        bounds: { all: null },
+
+        computeSize() {
+            return [0, ROW_HEIGHT];
+        },
+
+        draw(ctx, n, widgetWidth, posY, height) {
+            const width = node.size?.[0] ?? widgetWidth;
+            drawRoundedRect(
+                ctx, margin, posY, width - margin * 2, height,
+                on ? BOX_COLORS.action : BOX_COLORS.grey,
+                on ? "#6b5333" : "#3a3a3a",
+            );
+            ctx.save();
+            if (!on) ctx.globalAlpha = 0.45;
+            ctx.fillStyle = LiteGraph.WIDGET_TEXT_COLOR ?? "#DDD";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText(t("addLora"), width * 0.5, posY + height * 0.5);
+            ctx.restore();
+            this.bounds.all = [margin, width - margin * 2];
+        },
+
+        mouse(event, pos, n) {
+            const gate = mouseGate(event);
+            if (gate === "down") return;
+            if (gate !== "up") return false;
+            if (!inBounds(pos, this.bounds.all)) return false;
+            openPicker();
+            return true;
+        },
+    };
     add[rowFlag] = true;
-    add.serialize = false;   // 버튼이라 저장할 값이 없다
-    paint(add, on ? BOX_COLORS.action : BOX_COLORS.grey);
     made.push(add);
 
     // 호출한 쪽이 더 붙이고 싶은 줄(체크리스트의 "항목 삭제")
