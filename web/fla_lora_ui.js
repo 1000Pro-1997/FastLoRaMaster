@@ -458,7 +458,8 @@ export function buildLoraBox(node, opts = {}) {
             let rightEdge = width - margin - INNER;
             if (list.length) {
                 const arrowW = ARROW_W;
-                const capLabel = t("allStrength");
+                // 조작 방법을 알려주는 표시라 언어와 무관하게 영어로 둔다
+                const capLabel = "Drag";
                 ctx.font = "11px Arial";
                 const capW = ctx.measureText(capLabel).width + 10;
 
