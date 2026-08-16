@@ -69,6 +69,8 @@ function addStyles() {
       .fla-lp-dt-sec{margin-bottom:18px}.fla-lp-dt-sec>h3{margin:0 0 8px;color:#8d95a1;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.4px}
       .fla-lp-dt-link{display:inline-block;margin-top:4px;padding:7px 14px;color:#fff;background:#2f6fd0;border-radius:7px;font-size:13px;text-decoration:none}.fla-lp-dt-link:hover{background:#3b82f6}
       .fla-lp-dt-empty{padding:60px;text-align:center;color:#89919d}
+      .fla-lp-dt-model{display:grid;grid-template-columns:minmax(200px,300px) 1fr;gap:20px;align-items:start}@media (max-width:640px){.fla-lp-dt-model{grid-template-columns:1fr}}.fla-lp-dt-cover{display:flex;flex-direction:column;gap:8px}.fla-lp-dt-cover>h3{margin:0;color:#8d95a1;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.4px}.fla-lp-dt-coverbox{display:grid;place-items:center;overflow:hidden;background:#111318;border:1px solid #3b424d;border-radius:9px}.fla-lp-dt-coverbox img,.fla-lp-dt-coverbox video{display:block;width:100%;height:auto}.fla-lp-dt-setcover{position:absolute;z-index:4;left:8px;top:8px;padding:5px 10px;color:#fff;background:#000a;border:1px solid #ffffff33;border-radius:6px;font-size:11px;cursor:pointer}.fla-lp-dt-setcover:hover{background:#2f6fd0;border-color:#3b82f6}.fla-lp-dt-setcover:disabled{opacity:.5;cursor:default}
+      .fla-lp-toast{position:fixed;z-index:100020;left:50%;bottom:38px;transform:translateX(-50%);padding:9px 16px;color:#fff;background:#2f6fd0;border-radius:8px;font:13px Arial,sans-serif;box-shadow:0 8px 26px #0009}.fla-lp-toast.bad{background:#c0392b}
       .fla-lp-blur{filter:blur(18px);transform:scale(1.06)}.fla-lp-veil{position:absolute;inset:0;z-index:3;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;background:#0006}.fla-lp-veil span{padding:5px 11px;color:#fff;background:#000a;border-radius:6px;font-size:13px;font-weight:700}.fla-lp-veil button{padding:5px 15px;color:#fff;background:#2f6fd0;border:0;border-radius:6px;font-size:12px;cursor:pointer}.fla-lp-veil button:hover{background:#3b82f6}.fla-lp-head .adult.on{color:#fff;background:#c0392b;border-color:#e05c4a}
     `;
     document.head.appendChild(style);
@@ -201,6 +203,15 @@ function renderDescription(host, html) {
     if (!host.children.length) showEmpty();
 }
 
+/** 창 아래쪽에 잠깐 떴다 사라지는 알림. */
+function toast(message, error = false) {
+    const el = document.createElement("div");
+    el.className = `fla-lp-toast${error ? " bad" : ""}`;
+    el.textContent = message;
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 1800);
+}
+
 /** 누르면 클립보드로 복사되는 알약. 트리거 단어·태그에 쓴다. */
 function copyChip(text) {
     const chip = document.createElement("button");
@@ -219,7 +230,7 @@ function copyChip(text) {
 
 /** 모델 상세 창. 카드에서 우클릭하면 열린다.
  *  blurAdult 가 참이면 성인 등급 예시 이미지를 흐리게 보여준다. */
-export async function showLoraDetail(name, blurAdult = true) {
+export async function showLoraDetail(name, blurAdult = true, onPreviewChanged = null) {
     addStyles();
 
     let data;
@@ -250,6 +261,106 @@ export async function showLoraDetail(name, blurAdult = true) {
     bg.querySelector(".close").onclick = close;
     bg.onclick = (event) => { if (event.target === bg) close(); };
     document.addEventListener("keydown", key, true);
+
+    /** 대표 이미지를 바꾸고 화면을 새로 그린다.
+     *  라이브러리 캐시에도 반영해 목록으로 돌아갔을 때 옛 그림이 남지 않게 한다. */
+    async function applyPreview(request) {
+        let result;
+        try {
+            const res = await request();
+            result = await res.json();
+        } catch (e) {
+            result = null;
+        }
+        if (!result?.ok) {
+            toast(t("detailPreviewFail"), true);
+            return;
+        }
+        // 캐시 무효화용 값이 바뀌면 브라우저가 새 파일을 받아온다
+        const stamp = result.stamp ?? Date.now();
+        data.preview = `/fla/lora-preview?name=${encodeURIComponent(name)}&v=${stamp}`;
+        data.preview_type = result.preview_type ?? data.preview_type ?? "image";
+        // 목록 쪽 캐시도 같이 고쳐둔다
+        const cached = (await library()).find((it) => it.name === name);
+        if (cached) {
+            cached.preview = data.preview;
+            cached.preview_type = data.preview_type;
+        }
+        onPreviewChanged?.();
+        toast(t("detailPreviewDone"));
+        buttons[0].onclick();
+    }
+
+    /** 모델 탭 — 대표 이미지와 기본 정보. */
+    function renderModel() {
+        body.replaceChildren();
+
+        const wrap = document.createElement("div");
+        wrap.className = "fla-lp-dt-model";
+
+        // 왼쪽: 대표 이미지
+        const left = document.createElement("div");
+        left.className = "fla-lp-dt-cover";
+        const coverHead = document.createElement("h3");
+        coverHead.textContent = t("detailPreview");
+        left.appendChild(coverHead);
+
+        const coverBox = document.createElement("div");
+        coverBox.className = "fla-lp-dt-coverbox";
+        if (data.preview) {
+            const media = document.createElement(data.preview_type === "video" ? "video" : "img");
+            media.src = data.preview;
+            if (data.preview_type === "video") {
+                media.muted = true; media.loop = true; media.autoplay = true; media.playsInline = true;
+            }
+            coverBox.appendChild(media);
+        } else {
+            const empty = document.createElement("div");
+            empty.className = "fla-lp-dt-empty";
+            empty.textContent = t("detailNoPreview");
+            coverBox.appendChild(empty);
+        }
+        left.appendChild(coverBox);
+
+        // 파일에서 직접 올리기
+        const picker = document.createElement("input");
+        picker.type = "file";
+        picker.accept = "image/*,video/mp4,video/webm";
+        picker.style.display = "none";
+        picker.onchange = () => {
+            const file = picker.files?.[0];
+            if (!file) return;
+            const form = new FormData();
+            form.append("name", name);
+            form.append("file", file);
+            applyPreview(() => fetch("/fla/lora-preview-upload", { method: "POST", body: form }));
+        };
+        const upload = document.createElement("button");
+        upload.className = "fla-lp-dt-link";
+        upload.textContent = t("detailUpload");
+        upload.onclick = () => picker.click();
+        left.append(upload, picker);
+        wrap.appendChild(left);
+
+        // 오른쪽: 기본 정보
+        const rows = document.createElement("dl");
+        rows.className = "fla-lp-dt-rows";
+        const add = (label, value) => {
+            if (value === undefined || value === null || value === "") return;
+            const dt = document.createElement("dt"); dt.textContent = label;
+            const dd = document.createElement("dd"); dd.textContent = String(value);
+            rows.append(dt, dd);
+        };
+        add(t("detailName"), data.title);
+        add(t("tabVersion"), data.version);
+        add(t("detailBase"), data.base_model);
+        add(t("detailType"), data.model_type || "LoRA");
+        add(t("detailFolder"), data.folder || "/");
+        add(t("detailFile"), data.file_name);
+        wrap.appendChild(rows);
+
+        body.appendChild(wrap);
+    }
 
     /** 예시 이미지 탭. */
     function renderSamples() {
@@ -304,6 +415,21 @@ export async function showLoraDetail(name, blurAdult = true) {
                 veil.appendChild(show);
                 frame.appendChild(veil);
             }
+            // 이 예시를 대표 이미지로 삼는 버튼
+            const setBtn = document.createElement("button");
+            setBtn.className = "fla-lp-dt-setcover";
+            setBtn.textContent = t("detailSetPreview");
+            setBtn.onclick = (event) => {
+                event.stopPropagation();
+                setBtn.disabled = true;
+                applyPreview(() => fetch("/fla/lora-preview-set", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ name, url: shot.url }),
+                })).finally(() => { setBtn.disabled = false; });
+            };
+            frame.appendChild(setBtn);
+
             box.appendChild(frame);
 
             if (shot.prompt) {
@@ -399,6 +525,7 @@ export async function showLoraDetail(name, blurAdult = true) {
     }
 
     const tabs = [
+        [t("tabModel"), renderModel],
         [t("tabSamples"), renderSamples],
         [t("tabAbout"), renderAbout],
         [t("tabVersion"), renderVersion],
@@ -555,7 +682,8 @@ ${t("detailMore")}: ${t("hintRightClick")}`; card.tabIndex = 0; card.setAttribut
                 card.oncontextmenu = (event) => {
                     event.preventDefault();
                     event.stopPropagation();
-                    showLoraDetail(item.name, blurAdult);
+                    // 대표 이미지를 바꾸면 목록도 새로 그린다
+                    showLoraDetail(item.name, blurAdult, render);
                 };
                 // 토글이 켜져 있고, 성인물이며, 아직 "보기" 로 열지 않은 카드만 가린다
                 const hide = blurAdult && item.adult && !revealed.has(item.name);

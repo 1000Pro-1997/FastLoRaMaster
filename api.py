@@ -2,7 +2,8 @@
 
 import json
 import os
-from urllib.parse import quote
+import time
+from urllib.parse import quote, urlparse
 
 from aiohttp import web
 from server import PromptServer
@@ -143,7 +144,14 @@ def _lora_info(name):
             pass
 
     preview_path = _preview_path(stem, metadata.get("preview_url"))
-    preview = f"/fla/lora-preview?name={quote(name)}" if preview_path else None
+    preview = None
+    if preview_path:
+        # 대표 이미지를 바꾸면 URL 도 바뀌어야 브라우저가 새로 받아온다
+        try:
+            stamp = int(os.path.getmtime(preview_path))
+        except OSError:
+            stamp = 0
+        preview = f"/fla/lora-preview?name={quote(name)}&v={stamp}"
     civitai = metadata.get("civitai") or {}
 
     return {
@@ -197,6 +205,19 @@ async def get_lora_detail(request):
     model = civitai.get("model") or {}
     stats = civitai.get("stats") or {}
 
+    # 현재 대표 이미지(모델 탭에서 보여준다)
+    preview_path = _preview_path(stem, metadata.get("preview_url"))
+    preview = None
+    preview_type = "image"
+    if preview_path:
+        try:
+            stamp = int(os.path.getmtime(preview_path))
+        except OSError:
+            stamp = 0
+        preview = f"/fla/lora-preview?name={quote(name)}&v={stamp}"
+        if os.path.splitext(preview_path)[1].lower() in (".mp4", ".webm"):
+            preview_type = "video"
+
     # 예시 이미지. 원격 URL 이라 등급을 함께 넘겨 프론트에서 가릴 수 있게 한다.
     images = []
     for image in (civitai.get("images") or []):
@@ -229,6 +250,8 @@ async def get_lora_detail(request):
         "base_model": metadata.get("base_model") or civitai.get("baseModel") or "",
         "version": civitai.get("name") or "",
         "adult": _is_adult(metadata),
+        "preview": preview,
+        "preview_type": preview_type,
         "notes": metadata.get("notes") or "",
         "description": model.get("description") or civitai.get("description") or "",
         "trained_words": [w for w in (civitai.get("trainedWords") or []) if isinstance(w, str)],
@@ -241,6 +264,156 @@ async def get_lora_detail(request):
         "version_id": civitai.get("id"),
         "images": images,
     })
+
+
+def _metadata_path(name):
+    full = folder_paths.get_full_path("loras", name)
+    if full is None:
+        return None, None
+    return full, os.path.splitext(full)[0] + ".metadata.json"
+
+
+def _load_metadata(metadata_path):
+    if not metadata_path or not os.path.isfile(metadata_path):
+        return {}
+    try:
+        with open(metadata_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+    except (OSError, ValueError):
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def _save_metadata(metadata_path, data):
+    temp = metadata_path + ".tmp"
+    with open(temp, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+    os.replace(temp, metadata_path)
+
+
+# 대표 이미지로 쓸 수 있는 형식
+PREVIEW_EXTS = (".png", ".jpg", ".jpeg", ".webp", ".gif", ".mp4", ".webm")
+# 업로드 상한. 예시 영상이 몇 MB 씩 하므로 넉넉히 잡는다.
+MAX_PREVIEW_BYTES = 64 * 1024 * 1024
+
+
+def _write_preview(name, blob, ext):
+    """대표 이미지를 <로라이름>.preview.<확장자> 로 저장하고 메타데이터를 가리킨다.
+
+    확장자가 바뀔 수 있으므로(png -> mp4) 예전 preview 파일은 지운다.
+    """
+    full, metadata_path = _metadata_path(name)
+    if full is None:
+        return None, "LoRA not found"
+    stem = os.path.splitext(full)[0]
+
+    for old_ext in PREVIEW_EXTS:
+        old_file = stem + ".preview" + old_ext
+        if os.path.isfile(old_file):
+            try:
+                os.remove(old_file)
+            except OSError:
+                pass
+
+    target = stem + ".preview" + ext
+    try:
+        with open(target, "wb") as f:
+            f.write(blob)
+    except OSError as e:
+        return None, str(e)
+
+    metadata = _load_metadata(metadata_path)
+    metadata["preview_url"] = os.path.basename(target)
+    try:
+        _save_metadata(metadata_path, metadata)
+    except OSError as e:
+        return None, str(e)
+    return target, None
+
+
+@routes.post("/fla/lora-preview-set")
+async def post_lora_preview_set(request):
+    """예시 이미지 하나를 대표 이미지로 삼는다.
+
+    프론트가 URL 만 넘기면 서버가 내려받는다. 브라우저에서 받아 올리면
+    Civitai 의 교차 출처 정책에 걸릴 수 있어서 서버에서 처리한다.
+    """
+    try:
+        body = await request.json()
+    except Exception:
+        return web.json_response({"ok": False, "error": "Bad request"}, status=400)
+
+    name = body.get("name", "")
+    url = body.get("url", "")
+    if name not in folder_paths.get_filename_list("loras"):
+        return web.json_response({"ok": False, "error": "LoRA not found"}, status=404)
+    if not isinstance(url, str) or not url.startswith(("http://", "https://")):
+        return web.json_response({"ok": False, "error": "Bad url"}, status=400)
+
+    ext = os.path.splitext(urlparse(url).path)[1].lower()
+    if ext not in PREVIEW_EXTS:
+        ext = ".png"
+
+    try:
+        session = getattr(PromptServer.instance, "client_session", None)
+        if session is not None:
+            async with session.get(url) as res:
+                if res.status != 200:
+                    return web.json_response({"ok": False, "error": f"HTTP {res.status}"}, status=502)
+                blob = await res.read()
+        else:
+            import aiohttp
+            async with aiohttp.ClientSession() as own:
+                async with own.get(url) as res:
+                    if res.status != 200:
+                        return web.json_response({"ok": False, "error": f"HTTP {res.status}"}, status=502)
+                    blob = await res.read()
+    except Exception as e:
+        return web.json_response({"ok": False, "error": str(e)}, status=502)
+
+    if len(blob) > MAX_PREVIEW_BYTES:
+        return web.json_response({"ok": False, "error": "Too large"}, status=413)
+
+    target, error = _write_preview(name, blob, ext)
+    if error:
+        return web.json_response({"ok": False, "error": error}, status=500)
+    return web.json_response({"ok": True, "stamp": int(time.time())})
+
+
+@routes.post("/fla/lora-preview-upload")
+async def post_lora_preview_upload(request):
+    """사용자가 고른 파일을 대표 이미지로 저장한다."""
+    try:
+        reader = await request.multipart()
+    except Exception:
+        return web.json_response({"ok": False, "error": "Bad request"}, status=400)
+
+    name = None
+    blob = None
+    ext = ".png"
+    while True:
+        part = await reader.next()
+        if part is None:
+            break
+        if part.name == "name":
+            name = (await part.text()).strip()
+        elif part.name == "file":
+            candidate = os.path.splitext(part.filename or "")[1].lower()
+            if candidate in PREVIEW_EXTS:
+                ext = candidate
+            blob = await part.read(decode=False)
+
+    if not name or name not in folder_paths.get_filename_list("loras"):
+        return web.json_response({"ok": False, "error": "LoRA not found"}, status=404)
+    if not blob:
+        return web.json_response({"ok": False, "error": "No file"}, status=400)
+    if len(blob) > MAX_PREVIEW_BYTES:
+        return web.json_response({"ok": False, "error": "Too large"}, status=413)
+
+    target, error = _write_preview(name, blob, ext)
+    if error:
+        return web.json_response({"ok": False, "error": error}, status=500)
+    return web.json_response({"ok": True, "stamp": int(time.time())})
 
 
 @routes.post("/fla/lora-favorite")
