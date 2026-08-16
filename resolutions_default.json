@@ -1,0 +1,120 @@
+{
+  "SDXL": [
+    {
+      "w": 1024,
+      "h": 1024,
+      "favorite": true
+    },
+    {
+      "w": 1152,
+      "h": 896,
+      "favorite": false
+    },
+    {
+      "w": 1216,
+      "h": 832,
+      "favorite": true
+    },
+    {
+      "w": 1344,
+      "h": 768,
+      "favorite": false
+    },
+    {
+      "w": 1536,
+      "h": 640,
+      "favorite": false
+    },
+    {
+      "w": 1088,
+      "h": 960,
+      "favorite": false
+    },
+    {
+      "w": 1280,
+      "h": 768,
+      "favorite": false
+    }
+  ],
+  "SD 1.5": [
+    {
+      "w": 512,
+      "h": 512,
+      "favorite": false
+    },
+    {
+      "w": 512,
+      "h": 768,
+      "favorite": false
+    },
+    {
+      "w": 640,
+      "h": 512,
+      "favorite": false
+    },
+    {
+      "w": 768,
+      "h": 512,
+      "favorite": false
+    },
+    {
+      "w": 912,
+      "h": 512,
+      "favorite": false
+    }
+  ],
+  "Video": [
+    {
+      "w": 832,
+      "h": 480,
+      "favorite": true
+    },
+    {
+      "w": 1280,
+      "h": 720,
+      "favorite": false
+    },
+    {
+      "w": 1920,
+      "h": 1080,
+      "favorite": false
+    },
+    {
+      "w": 720,
+      "h": 1280,
+      "favorite": false
+    },
+    {
+      "w": 1080,
+      "h": 1920,
+      "favorite": false
+    }
+  ],
+  "Flux HiRes": [
+    {
+      "w": 1024,
+      "h": 1024,
+      "favorite": false
+    },
+    {
+      "w": 1408,
+      "h": 1024,
+      "favorite": false
+    },
+    {
+      "w": 1728,
+      "h": 1152,
+      "favorite": false
+    },
+    {
+      "w": 1920,
+      "h": 1080,
+      "favorite": false
+    },
+    {
+      "w": 2048,
+      "h": 2048,
+      "favorite": false
+    }
+  ]
+}

@@ -1,0 +1,145 @@
+{
+  "FLALoraTheme": {
+    "display_name": "FLM 로라 테마",
+    "description": "테마별 프리셋으로 로라를 적용하고 프롬프트를 조합합니다.",
+    "inputs": {
+      "theme": {
+        "name": "테마",
+        "tooltip": "사용할 테마. presets/ 폴더의 하위 폴더가 곧 테마입니다."
+      },
+      "preset": {
+        "name": "프리셋",
+        "tooltip": "선택된 프리셋 이름. UI가 채웁니다."
+      },
+      "prompt": {
+        "name": "프롬프트",
+        "tooltip": "이 프리셋의 프롬프트."
+      },
+      "lora_data": {
+        "name": "로라 데이터",
+        "tooltip": "로라 목록(JSON). UI가 관리합니다."
+      },
+      "prompt_enabled": {
+        "name": "프롬프트 사용",
+        "tooltip": "끄면 이 노드의 프롬프트를 빼고 앞 노드 것만 내보냅니다. 로라는 그대로 적용됩니다."
+      },
+      "loras_enabled": {
+        "name": "로라 사용",
+        "tooltip": "끄면 로라를 하나도 적용하지 않습니다. 각 로라의 켜짐 상태는 그대로 남습니다."
+      },
+      "model": {
+        "name": "모델",
+        "tooltip": "연결하면 로라를 적용해 내보냅니다. 없으면 로라는 건너뜁니다."
+      },
+      "clip": {
+        "name": "클립",
+        "tooltip": "연결하면 로라를 적용해 내보냅니다. 없으면 로라는 건너뜁니다."
+      },
+      "prompt_in": {
+        "name": "프롬프트 입력",
+        "tooltip": "앞 노드의 프롬프트. 연결하면 앞에 이어붙입니다."
+      }
+    },
+    "outputs": {
+      "0": {
+        "name": "모델"
+      },
+      "1": {
+        "name": "클립"
+      },
+      "2": {
+        "name": "프롬프트"
+      }
+    }
+  },
+  "FLAChecklist": {
+    "display_name": "FLM 로라 체크리스트",
+    "description": "체크한 항목만 모아 프롬프트를 만들고 그 항목의 로라를 적용합니다.",
+    "inputs": {
+      "items_data": {
+        "name": "항목 데이터",
+        "tooltip": "체크리스트 항목(JSON). UI가 관리합니다."
+      },
+      "delimiter": {
+        "name": "구분자",
+        "tooltip": "체크한 항목의 프롬프트 사이에 넣을 문자."
+      },
+      "prompt_enabled": {
+        "name": "프롬프트 사용",
+        "tooltip": "끄면 이 노드의 프롬프트를 빼고 앞 노드 것만 내보냅니다. 로라는 그대로 적용됩니다."
+      },
+      "loras_enabled": {
+        "name": "로라 사용",
+        "tooltip": "끄면 로라를 하나도 적용하지 않습니다. 각 항목의 켜짐 상태는 그대로 남습니다."
+      },
+      "model": {
+        "name": "모델",
+        "tooltip": "연결하면 로라를 적용해 내보냅니다. 없으면 로라는 건너뜁니다."
+      },
+      "clip": {
+        "name": "클립",
+        "tooltip": "연결하면 로라를 적용해 내보냅니다. 없으면 로라는 건너뜁니다."
+      },
+      "prompt_in": {
+        "name": "프롬프트 입력",
+        "tooltip": "앞 노드의 프롬프트. 연결하면 앞에 이어붙입니다."
+      }
+    },
+    "outputs": {
+      "0": {
+        "name": "모델"
+      },
+      "1": {
+        "name": "클립"
+      },
+      "2": {
+        "name": "프롬프트"
+      }
+    }
+  },
+  "FLAResolution": {
+    "display_name": "FLM 해상도",
+    "description": "해상도를 골라 가로/세로 정수로 내보냅니다.",
+    "inputs": {
+      "width": {
+        "name": "가로",
+        "tooltip": "가로. 목록이나 비율로 자동으로 채워지기도 합니다."
+      },
+      "height": {
+        "name": "세로",
+        "tooltip": "세로."
+      },
+      "preset": {
+        "name": "선택 항목",
+        "tooltip": "고른 목록 항목. 표시용입니다."
+      },
+      "group": {
+        "name": "그룹",
+        "tooltip": "지금 보고 있는 그룹 이름. UI가 관리합니다."
+      },
+      "ratio": {
+        "name": "비율",
+        "tooltip": "비율 표기. 비율 연동이 켜져 있을 때 UI가 씁니다."
+      },
+      "link_ratio": {
+        "name": "비율 연동",
+        "tooltip": "켜면 한쪽을 바꿀 때 반대쪽이 비율에 맞춰 따라옵니다."
+      },
+      "swap": {
+        "name": "가로세로 바꿈",
+        "tooltip": "켜면 가로와 세로를 바꿔서 내보냅니다."
+      }
+    },
+    "outputs": {
+      "0": {
+        "name": "가로"
+      },
+      "1": {
+        "name": "세로"
+      },
+      "2": {
+        "name": "정보"
+      }
+    }
+  }
+}

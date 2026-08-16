@@ -1,0 +1,277 @@
+/** comfy_FLA 공용 번역.
+ *
+ *  캔버스에 직접 그리는 글자는 ComfyUI 번역 시스템이 닿지 않으므로
+ *  여기서 직접 고른다. 새 문구를 추가할 때는 세 언어를 모두 채운다.
+ */
+
+const STRINGS = {
+    en: {
+        // 공통
+        save: "Save",
+        options: "Options",
+        cancel: "Cancel",
+        close: "Close",
+        manual: "Manual",
+        group: "Group",
+        value: "Value",
+
+        // 로라 테마 노드
+        preset: "Preset",
+        presetName: "Preset name",
+        chainNode: "Add node below",
+        chained: "Added a node below.",
+        chainFailed: "Could not add the node.",
+        newPreset: "New",
+        rename: "Rename",
+        remove: "Delete",
+        newTheme: "New theme",
+        themeRename: "Rename theme",
+        applyLora: "Apply LoRA",
+        addLora: "+ Add LoRA",
+        pickLora: "Select LoRA",
+        searchLora: "Search LoRAs, tags, or base model",
+        allFolders: "All folders",
+        loraFavorites: "Favorites",
+        loraRoot: "LoRA root",
+        includeSubfolders: "Include LoRAs in subfolders",
+        expandFolders: "Expand or collapse all folders",
+        strength: "Strength",
+        noLoras: "No LoRAs found.",
+        savedAs: "Saved: ",
+        renamedTo: "Renamed: ",
+        deleted: "Deleted.",
+        deletedWithTheme: "Deleted. Empty theme was removed too.",
+        createdAs: "Created: ",
+        themeCreated: "Theme created.",
+        emptyPreset: "Empty. Press Save to name it.",
+        noPresetSelected: "No preset selected.",
+        noThemeSelected: "No theme selected.",
+        confirmDelete: (n) => `Delete preset "${n}"?`,
+        askThemePreset: "Theme / Preset  (e.g. Pose/Standing)",
+        askThemePresetShort: "Theme / Preset",
+        formatHint: "Use Theme/Preset format, e.g. Pose/Standing",
+        askNewTheme: "New theme name",
+        loadFailed: "Load failed: ",
+        saveFailed: "Save failed: ",
+        deleteFailed: "Delete failed: ",
+        renameFailed: "Rename failed: ",
+        createFailed: "Create failed: ",
+        listFailed: "Could not load presets: ",
+        tipPromptToggle: "Toggle: include this node's prompt / Name: pick preset",
+        tipLoraBypass: "Off skips every LoRA below. Each LoRA keeps its own state.",
+
+        // 체크리스트 노드
+        checklist: "Checklist",
+        addItem: "Add item",
+        removeItem: "Delete item",
+        itemTitle: "Title",
+        itemPrompt: "Prompt",
+        untitledItem: "(empty item)",
+        tipHeaderRow: "Toggle: include this node's prompt. LoRA: apply the items' LoRAs.",
+        tipItemRow: "Click the row to toggle. Gear opens the settings.",
+
+        // 해상도 노드
+        favorites: "★ Favorites",
+        editList: "Edit list",
+        addCurrent: "+ Add current size",
+        resetList: "↺ Reset to defaults",
+        confirmReset: "Reset the list to its original state.\nAll added or edited entries will be lost.",
+        askGroup: "Which group?",
+        defaultGroup: "My list",
+        resetFailed: "Reset failed: ",
+        tipListRow: "Left: browse groups. Right: pick from the current group.",
+        tipSizeRow: "Width and height. With ratio link on, changing one side updates the other.",
+        tipRatioRow: "Aspect ratio. The toggle swaps width and height.",
+        tipEditRow: "Star to favourite, click a number to edit, X to delete.",
+        tipAddRow: "Adds the current size to a group.",
+        tipResetRow: "Restores the original list.",
+    },
+
+    ko: {
+        save: "저장",
+        options: "옵션",
+        cancel: "취소",
+        close: "닫기",
+        manual: "수동",
+        group: "그룹",
+        value: "값",
+
+        preset: "프리셋",
+        presetName: "프리셋 이름",
+        chainNode: "아래에 노드 추가",
+        chained: "아래에 노드를 추가했습니다.",
+        chainFailed: "노드를 추가하지 못했습니다.",
+        newPreset: "새로만들기",
+        rename: "이름 바꾸기",
+        remove: "삭제",
+        newTheme: "새 테마",
+        themeRename: "테마 이름 바꾸기",
+        applyLora: "로라 적용",
+        addLora: "＋ 로라 추가",
+        pickLora: "로라 선택",
+        searchLora: "로라 이름, 태그, 기반 모델 검색",
+        allFolders: "모든 폴더",
+        loraFavorites: "즐겨찾기",
+        loraRoot: "LoRA 루트",
+        includeSubfolders: "하위 폴더의 LoRA 포함",
+        expandFolders: "모든 폴더 펼치기·접기",
+        strength: "강도",
+        noLoras: "로라가 없습니다.",
+        savedAs: "저장했습니다: ",
+        renamedTo: "이름을 바꿨습니다: ",
+        deleted: "삭제했습니다.",
+        deletedWithTheme: "삭제했습니다. 비어 있던 테마도 정리했습니다.",
+        createdAs: "만들었습니다: ",
+        themeCreated: "테마를 만들었습니다.",
+        emptyPreset: "빈 상태입니다. 저장을 누르면 이름을 묻습니다.",
+        noPresetSelected: "선택된 프리셋이 없습니다.",
+        noThemeSelected: "선택된 테마가 없습니다.",
+        confirmDelete: (n) => `${n} 프리셋을 삭제할까요?`,
+        askThemePreset: "테마/프리셋  (예: 자세/서있기)",
+        askThemePresetShort: "테마/프리셋",
+        formatHint: "테마/프리셋 형식으로 입력하세요. 예: 자세/서있기",
+        askNewTheme: "새 테마 이름",
+        loadFailed: "불러오기 실패: ",
+        saveFailed: "저장 실패: ",
+        deleteFailed: "삭제 실패: ",
+        renameFailed: "이름 변경 실패: ",
+        createFailed: "생성 실패: ",
+        listFailed: "프리셋 목록 실패: ",
+        tipPromptToggle: "토글: 이 노드의 프롬프트를 넣을지 여부 / 이름: 프리셋 선택",
+        tipLoraBypass: "끄면 아래 로라를 하나도 적용하지 않는다. 각 로라의 켜짐 상태는 그대로 남는다.",
+
+        checklist: "체크리스트",
+        addItem: "항목 추가",
+        removeItem: "항목 삭제",
+        itemTitle: "제목",
+        itemPrompt: "프롬프트",
+        untitledItem: "(빈 항목)",
+        tipHeaderRow: "토글: 이 노드의 프롬프트를 넣을지 여부 / LoRA: 항목에 달린 로라 적용 여부",
+        tipItemRow: "줄을 누르면 켜고 끕니다. 톱니를 누르면 설정이 열립니다.",
+
+        favorites: "★ 즐겨찾기",
+        editList: "목록 수정",
+        addCurrent: "＋ 현재 크기를 목록에 추가",
+        resetList: "↺ 기본 목록으로 초기화",
+        confirmReset: "목록을 처음 상태로 되돌립니다.\n추가하거나 고친 항목은 모두 사라집니다.",
+        askGroup: "어느 그룹에 넣을까요?",
+        defaultGroup: "내 목록",
+        resetFailed: "초기화 실패: ",
+        tipListRow: "왼쪽: 그룹 탐색 / 오른쪽: 현재 그룹에서 바로 선택",
+        tipSizeRow: "가로와 세로. 비율 연동이 켜져 있으면 한쪽을 바꿀 때 반대쪽이 따라옵니다.",
+        tipRatioRow: "비율. 토글을 누르면 가로와 세로가 맞바뀝니다.",
+        tipEditRow: "별은 즐겨찾기, 숫자를 누르면 수정, X는 삭제입니다.",
+        tipAddRow: "지금 크기를 원하는 그룹에 추가합니다.",
+        tipResetRow: "목록을 처음 상태로 되돌립니다.",
+    },
+
+    zh: {
+        save: "保存",
+        options: "选项",
+        cancel: "取消",
+        close: "关闭",
+        manual: "手动",
+        group: "分组",
+        value: "数值",
+
+        preset: "预设",
+        presetName: "预设名称",
+        chainNode: "在下方添加节点",
+        chained: "已在下方添加节点。",
+        chainFailed: "无法添加节点。",
+        newPreset: "新建",
+        rename: "重命名",
+        remove: "删除",
+        newTheme: "新建主题",
+        themeRename: "重命名主题",
+        applyLora: "应用 LoRA",
+        addLora: "＋ 添加 LoRA",
+        pickLora: "选择 LoRA",
+        searchLora: "搜索 LoRA、标签或基础模型",
+        allFolders: "所有文件夹",
+        loraFavorites: "收藏",
+        loraRoot: "LoRA 根目录",
+        includeSubfolders: "包含子文件夹中的 LoRA",
+        expandFolders: "展开或折叠所有文件夹",
+        strength: "强度",
+        noLoras: "没有找到 LoRA。",
+        savedAs: "已保存：",
+        renamedTo: "已重命名：",
+        deleted: "已删除。",
+        deletedWithTheme: "已删除。空主题也一并清理。",
+        createdAs: "已创建：",
+        themeCreated: "已创建主题。",
+        emptyPreset: "当前为空。点击保存后输入名称。",
+        noPresetSelected: "未选择预设。",
+        noThemeSelected: "未选择主题。",
+        confirmDelete: (n) => `确定删除预设“${n}”？`,
+        askThemePreset: "主题/预设（例如：姿势/站立）",
+        askThemePresetShort: "主题/预设",
+        formatHint: "请使用 主题/预设 格式，例如：姿势/站立",
+        askNewTheme: "新主题名称",
+        loadFailed: "加载失败：",
+        saveFailed: "保存失败：",
+        deleteFailed: "删除失败：",
+        renameFailed: "重命名失败：",
+        createFailed: "创建失败：",
+        listFailed: "无法加载预设列表：",
+        tipPromptToggle: "开关：是否包含此节点的提示词 / 名称：选择预设",
+        tipLoraBypass: "关闭后不应用任何 LoRA。各 LoRA 自身的开关状态保持不变。",
+
+        checklist: "清单",
+        addItem: "添加项目",
+        removeItem: "删除项目",
+        itemTitle: "标题",
+        itemPrompt: "提示词",
+        untitledItem: "（空项目）",
+        tipHeaderRow: "开关：是否包含此节点的提示词 / LoRA：是否应用项目中的 LoRA。",
+        tipItemRow: "点击该行可开关。齿轮打开设置。",
+
+        favorites: "★ 收藏",
+        editList: "编辑列表",
+        addCurrent: "＋ 添加当前尺寸",
+        resetList: "↺ 恢复默认列表",
+        confirmReset: "将列表恢复为初始状态。\n所有新增或修改的条目都会丢失。",
+        askGroup: "添加到哪个分组？",
+        defaultGroup: "我的列表",
+        resetFailed: "恢复失败：",
+        tipListRow: "左侧：浏览分组／右侧：在当前分组中直接选择",
+        tipSizeRow: "宽和高。开启比例联动后，修改一边另一边会跟随。",
+        tipRatioRow: "宽高比。点击开关可交换宽和高。",
+        tipEditRow: "星号收藏，点击数字修改，X 删除。",
+        tipAddRow: "把当前尺寸添加到指定分组。",
+        tipResetRow: "将列表恢复为初始状态。",
+    },
+};
+
+/** ComfyUI 설정에서 현재 언어를 읽는다. 못 읽으면 브라우저 언어를 쓴다. */
+function currentLang() {
+    let raw = "";
+    try {
+        raw = window.comfyAPI?.app?.app?.ui?.settings
+            ?.getSettingValue?.("Comfy.Locale") ?? "";
+    } catch (e) {
+        raw = "";
+    }
+    if (!raw) {
+        try {
+            raw = localStorage.getItem("Comfy.Settings.Comfy.Locale") ?? "";
+            raw = raw.replace(/"/g, "");
+        } catch (e) { /* 저장소 접근 불가 */ }
+    }
+    if (!raw) raw = navigator.language ?? "en";
+
+    const lower = String(raw).toLowerCase();
+    if (lower.startsWith("ko")) return "ko";
+    if (lower.startsWith("zh")) return "zh";
+    return "en";
+}
+
+/** 번역 문자열을 가져온다. 없으면 영어로, 그래도 없으면 키 그대로. */
+export function t(key, ...args) {
+    const lang = currentLang();
+    const v = STRINGS[lang]?.[key] ?? STRINGS.en[key] ?? key;
+    return typeof v === "function" ? v(...args) : v;
+}
+
+export { currentLang };

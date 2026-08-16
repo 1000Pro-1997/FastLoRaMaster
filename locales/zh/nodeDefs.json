@@ -1,0 +1,145 @@
+{
+  "FLALoraTheme": {
+    "display_name": "FLM LoRA 主题",
+    "description": "按主题预设应用 LoRA 并组合提示词。",
+    "inputs": {
+      "theme": {
+        "name": "主题",
+        "tooltip": "要使用的主题。presets/ 下的每个子文件夹就是一个主题。"
+      },
+      "preset": {
+        "name": "预设",
+        "tooltip": "已选预设名称，由界面填写。"
+      },
+      "prompt": {
+        "name": "提示词",
+        "tooltip": "该预设的提示词。"
+      },
+      "lora_data": {
+        "name": "LoRA 数据",
+        "tooltip": "LoRA 列表（JSON），由界面管理。"
+      },
+      "prompt_enabled": {
+        "name": "启用提示词",
+        "tooltip": "关闭后不输出本节点的提示词，只透传上游内容。LoRA 仍会应用。"
+      },
+      "loras_enabled": {
+        "name": "启用 LoRA",
+        "tooltip": "关闭后不应用任何 LoRA。各 LoRA 自身的开关状态保持不变。"
+      },
+      "model": {
+        "name": "模型",
+        "tooltip": "连接后应用 LoRA。未连接则跳过 LoRA。"
+      },
+      "clip": {
+        "name": "CLIP",
+        "tooltip": "连接后应用 LoRA。未连接则跳过 LoRA。"
+      },
+      "prompt_in": {
+        "name": "提示词输入",
+        "tooltip": "上游节点的提示词，连接后会拼接在前面。"
+      }
+    },
+    "outputs": {
+      "0": {
+        "name": "模型"
+      },
+      "1": {
+        "name": "CLIP"
+      },
+      "2": {
+        "name": "提示词"
+      }
+    }
+  },
+  "FLAChecklist": {
+    "display_name": "FLM LoRA 清单",
+    "description": "只把勾选的项目组合成提示词，并应用这些项目的 LoRA。",
+    "inputs": {
+      "items_data": {
+        "name": "项目数据",
+        "tooltip": "清单项目（JSON）。由 UI 管理。"
+      },
+      "delimiter": {
+        "name": "分隔符",
+        "tooltip": "拼接已勾选项目提示词时使用的字符。"
+      },
+      "prompt_enabled": {
+        "name": "使用提示词",
+        "tooltip": "关闭后不输出此节点的提示词，只传递上游内容。LoRA 仍会应用。"
+      },
+      "loras_enabled": {
+        "name": "使用 LoRA",
+        "tooltip": "关闭后不应用任何 LoRA。各项目自身的开关状态保持不变。"
+      },
+      "model": {
+        "name": "模型",
+        "tooltip": "连接后会应用 LoRA 并输出。未连接则跳过 LoRA。"
+      },
+      "clip": {
+        "name": "CLIP",
+        "tooltip": "连接后会应用 LoRA 并输出。未连接则跳过 LoRA。"
+      },
+      "prompt_in": {
+        "name": "提示词输入",
+        "tooltip": "上游节点的提示词。连接后会拼接在前面。"
+      }
+    },
+    "outputs": {
+      "0": {
+        "name": "模型"
+      },
+      "1": {
+        "name": "CLIP"
+      },
+      "2": {
+        "name": "提示词"
+      }
+    }
+  },
+  "FLAResolution": {
+    "display_name": "FLM 分辨率",
+    "description": "选择分辨率并输出宽高整数。",
+    "inputs": {
+      "width": {
+        "name": "宽",
+        "tooltip": "宽度。也可由列表或比例自动填入。"
+      },
+      "height": {
+        "name": "高",
+        "tooltip": "高度。"
+      },
+      "preset": {
+        "name": "所选条目",
+        "tooltip": "选中的列表条目，仅用于显示。"
+      },
+      "group": {
+        "name": "分组",
+        "tooltip": "当前分组名称，由界面管理。"
+      },
+      "ratio": {
+        "name": "比例",
+        "tooltip": "比例文本。比例联动开启时由界面使用。"
+      },
+      "link_ratio": {
+        "name": "比例联动",
+        "tooltip": "开启后修改一边，另一边会按比例跟随。"
+      },
+      "swap": {
+        "name": "交换宽高",
+        "tooltip": "开启后输出时交换宽和高。"
+      }
+    },
+    "outputs": {
+      "0": {
+        "name": "宽"
+      },
+      "1": {
+        "name": "高"
+      },
+      "2": {
+        "name": "信息"
+      }
+    }
+  }
+}
