@@ -255,10 +255,11 @@ export function makeLoraRow(node, lora, idx, opts = {}) {
             if (!lora.enabled) ctx.globalAlpha = 0.45;
             else if (off) ctx.globalAlpha = 0.5;
 
-            // 오른쪽 끝: 삭제 버튼. 빨간 둥근 네모에 흰 ✕.
-            const delW = 16;
+            // 오른쪽 끝: 삭제 버튼. 빨간 둥근 정사각형에 흰 ✕.
+            // 한 변을 줄 높이에서 위아래 여백을 뺀 값으로 잡아 정사각형을 만든다.
+            const delW = height - 8;
             const delX = width - margin - inner - delW;
-            drawRoundedRect(ctx, delX, posY + 4, delW, height - 8,
+            drawRoundedRect(ctx, delX, posY + 4, delW, delW,
                 ROW_COLORS.delBg, ROW_COLORS.delEdge);
             ctx.fillStyle = "#fff";
             ctx.textAlign = "center";
