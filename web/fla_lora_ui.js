@@ -579,10 +579,8 @@ export function buildLoraBox(node, opts = {}) {
     const openPicker = async () => {
         // 목록에서 고른 뒤에만 줄을 추가한다 (취소하면 아무 일도 없음)
         const choice = await pickLora();
-        console.log("[FLA] 고른 로라:", choice);
         if (!choice) return;
         onAdd(choice);
-        console.log("[FLA] 추가 후 개수:", (loras() ?? []).length);
     };
 
     const add = {

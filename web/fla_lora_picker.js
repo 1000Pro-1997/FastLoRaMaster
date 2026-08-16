@@ -95,6 +95,8 @@ function modelBadge(base) {
 }
 
 function highlighted(element, text, query) {
+    // 버전처럼 없을 수도 있는 칸은 요소 자체가 안 만들어진다
+    if (!element) return;
     element.replaceChildren();
     if (!query) {
         element.textContent = text;
