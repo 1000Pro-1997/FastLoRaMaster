@@ -54,5 +54,18 @@ export function releaseWidgetCapture() {
  */
 export function releaseWidgetCaptureSoon() {
     releaseWidgetCapture();
-    Promise.resolve().then(releaseWidgetCapture);
+    // 예약해둔 정리가 "다음" 클릭까지 살아남으면 안 된다.
+    // 그 사이에 새 위젯이 잡히면(예: 강도 숫자 드래그) 그것까지 풀어버려
+    // pointermove 가 위젯에 전달되지 않는다. 대입해둔 주인이 그대로일 때만 푼다.
+    const canvas = app?.canvas;
+    // node_widget 은 [node, widget] 배열이라 매번 새로 만들어진다.
+    // 위젯 자체를 기억해 두고, 같은 위젯일 때만 푼다.
+    const owner = canvas?.node_widget?.[1] ?? null;
+    Promise.resolve().then(() => {
+        if (!canvas) return;
+        const current = canvas.node_widget?.[1] ?? null;
+        // 그 사이 다른 위젯이 잡혔으면(예: 강도 숫자 드래그) 건드리지 않는다
+        if (current !== null && current !== owner) return;
+        releaseWidgetCapture();
+    });
 }
