@@ -1,5 +1,6 @@
 import { app } from "../../scripts/app.js";
 import { t } from "./fla_i18n.js";
+import { mouseGate, releaseWidgetCapture, releaseWidgetCaptureSoon } from "./fla_widget_mouse.js";
 
 const NODE_NAME = "FLAResolution";
 const ROW_HEIGHT = 22;
@@ -38,6 +39,7 @@ async function resetGroups() {
         groups = json.groups ?? {};
         return true;
     } catch (e) {
+        releaseWidgetCapture();
         alert(t("resetFailed") + e.message);
         return false;
     }
@@ -57,6 +59,7 @@ async function saveGroups(next) {
         groups = json.groups ?? {};
         return true;
     } catch (e) {
+        releaseWidgetCapture();
         alert(t("saveFailed") + e.message);
         return false;
     }
@@ -64,6 +67,8 @@ async function saveGroups(next) {
 
 /** 목록이 길어지면 스크롤이 생기도록 높이를 제한한다. */
 function openMenu(values, event, onPick) {
+    // 메뉴가 커서를 덮으면 캔버스가 pointerup 을 못 받아 위젯 캡처가 남는다
+    releaseWidgetCaptureSoon();
     const menu = new LiteGraph.ContextMenu(values, {
         scale: Math.max(1, app.canvas.ds.scale),
         event,
@@ -197,16 +202,10 @@ function parseRatio(text) {
     return (a > 0 && b > 0) ? [a, b] : null;
 }
 
-/** 커스텀 위젯 공통 마우스 처리. up 에서 한 번만 동작시킨다. */
-function mouseGate(event) {
-    const t = event.type;
-    if (t === "pointerdown" || t === "mousedown") return "down";
-    if (t === "pointerup" || t === "mouseup") return "up";
-    return null;
-}
-
 /** 캔버스 위에 임시 입력창을 띄운다. 팝업 대신 그 자리에서 고치는 느낌. */
 function inlineEdit(node, bounds, rowY, value, onDone) {
+    // 입력창이 캔버스를 덮어 pointerup 이 오지 않는다
+    releaseWidgetCaptureSoon();
     const canvas = app.canvas;
     const el = document.createElement("input");
     el.type = "number";
@@ -402,7 +401,8 @@ app.registerExtension({
                 },
                 mouse(event, pos) {
                     const g = mouseGate(event);
-                    if (g === "down") return true;
+                    // 반환값은 dirty_canvas 로만 쓰인다. up 에서만 처리한다.
+                    if (g === "down") return;
                     if (g !== "up") return false;
 
                     // ── 왼쪽: 그룹 → 항목 (폴더 구조) ──
@@ -518,7 +518,8 @@ app.registerExtension({
                 },
                 mouse(event, pos) {
                     const g = mouseGate(event);
-                    if (g === "down") return true;
+                    // 반환값은 dirty_canvas 로만 쓰인다. up 에서만 처리한다.
+                    if (g === "down") return;
                     if (g !== "up") return false;
 
                     if (inBounds(pos, this.bounds.toggle)) {
@@ -615,7 +616,8 @@ app.registerExtension({
                 },
                 mouse(event, pos) {
                     const g = mouseGate(event);
-                    if (g === "down") return true;
+                    // 반환값은 dirty_canvas 로만 쓰인다. up 에서만 처리한다.
+                    if (g === "down") return;
                     if (g !== "up") return false;
 
                     // 스왑 토글은 연동이 꺼져 있어도 쓸 수 있게 둔다.
@@ -726,7 +728,8 @@ app.registerExtension({
                 },
                 mouse(event, pos) {
                     const g = mouseGate(event);
-                    if (g === "down") return true;
+                    // 반환값은 dirty_canvas 로만 쓰인다. up 에서만 처리한다.
+                    if (g === "down") return;
                     if (g !== "up") return false;
                     const it = groups?.[group]?.[idx];
                     if (!it) return false;
@@ -839,10 +842,12 @@ app.registerExtension({
                 },
                 mouse(event, pos) {
                     const g = mouseGate(event);
-                    if (g === "down") return true;
+                    // 반환값은 dirty_canvas 로만 쓰인다. up 에서만 처리한다.
+                    if (g === "down") return;
                     if (g !== "up") return false;
                     if (!inBounds(pos, this.bounds.add)) return false;
 
+                    releaseWidgetCaptureSoon();
                     const name = window.prompt(t("askGroup"),
                         Object.keys(groups ?? {})[0] ?? t("defaultGroup"));
                     if (!name) return true;
@@ -879,10 +884,12 @@ app.registerExtension({
                 },
                 mouse(event, pos) {
                     const g = mouseGate(event);
-                    if (g === "down") return true;
+                    // 반환값은 dirty_canvas 로만 쓰인다. up 에서만 처리한다.
+                    if (g === "down") return;
                     if (g !== "up") return false;
                     if (!inBounds(pos, this.bounds.reset)) return false;
 
+                    releaseWidgetCaptureSoon();
                     if (!confirm(t("confirmReset"))) {
                         return true;
                     }

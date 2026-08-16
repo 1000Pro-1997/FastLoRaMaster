@@ -1,4 +1,5 @@
 import { t } from "./fla_i18n.js";
+import { releaseWidgetCapture, releaseWidgetCaptureSoon } from "./fla_widget_mouse.js";
 
 let libraryPromise;
 
@@ -99,6 +100,9 @@ function makePreview(item, interactive = false) {
 }
 
 export async function pickLora() {
+    // 전체 화면 모달이 커서를 덮어 캔버스가 pointerup 을 못 받는다.
+    // 위젯 캡처를 미리 풀지 않으면 닫은 뒤 다른 버튼이 눌리지 않는다.
+    releaseWidgetCaptureSoon();
     const items = await library();
     if (!items.length) return null;
     addStyles();

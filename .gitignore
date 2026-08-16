@@ -1,3 +1,11 @@
 __pycache__/
 *.py[cod]
 presets/
+
+# Local secrets — never commit, never publish
+.env
+.env.*
+!.env.example
+
+# Build artifact for Comfy Registry
+node.zip

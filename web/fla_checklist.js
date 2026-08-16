@@ -2,6 +2,7 @@ import { app } from "../../scripts/app.js";
 import { ComfyWidgets } from "../../scripts/widgets.js";
 import { t } from "./fla_i18n.js";
 import { pickLora } from "./fla_lora_picker.js";
+import { mouseGate, releaseWidgetCapture, releaseWidgetCaptureSoon } from "./fla_widget_mouse.js";
 
 const NODE_NAME = "FLAChecklist";
 
@@ -23,6 +24,8 @@ function findWidget(node, name) {
 
 function notify(msg, error = false) {
     if (error) {
+        // 블로킹 대화상자라 pointerup 을 삼킬 수 있다
+        releaseWidgetCapture();
         alert(msg);
         return;
     }
@@ -37,6 +40,8 @@ function notify(msg, error = false) {
 /** 로라 선택 팝업. 클릭한 자리에서 열리도록 이벤트를 넘겨준다.
  *  fla_lora_theme.js 와 같은 방식이다. */
 function pickFromList(list, event) {
+    // 메뉴가 커서를 덮으면 pointerup 이 캔버스로 오지 않는다
+    releaseWidgetCaptureSoon();
     return new Promise((resolve) => {
         const ev = event
             ?? app.canvas.last_canvas_mouse_event
@@ -342,8 +347,10 @@ function makeItemRow(node, item, idx) {
         },
 
         mouse(event, pos, n) {
-            if (event.type === "pointerdown" || event.type === "mousedown") return true;
-            if (event.type !== "pointerup" && event.type !== "mouseup") return false;
+            // 반환값은 dirty_canvas 로만 쓰인다. up 에서만 처리한다.
+            const gate = mouseGate(event);
+            if (gate === "down") return;
+            if (gate !== "up") return false;
             return this.activate(pos);
         },
     };
@@ -376,6 +383,7 @@ function handleLoraRowClick(node, item, lora, idx, widget, pos) {
         return true;
     }
     if (inBounds(pos, widget.bounds.num)) {
+        releaseWidgetCaptureSoon();
         const value = window.prompt(t("strength"), String(lora.strength));
         if (value !== null && !isNaN(parseFloat(value))) {
             lora.strength = parseFloat(value);
@@ -454,9 +462,10 @@ function makeLoraRow(node, item, lora, idx) {
         },
 
         mouse(event, pos, n) {
-            const type = event.type;
-            if (type === "pointerdown" || type === "mousedown") return true;
-            if (type !== "pointerup" && type !== "mouseup") return false;
+            // 반환값은 dirty_canvas 로만 쓰인다. up 에서만 처리한다.
+            const gate = mouseGate(event);
+            if (gate === "down") return;
+            if (gate !== "up") return false;
             return handleLoraRowClick(node, item, lora, idx, this, pos);
         },
     };
@@ -509,8 +518,10 @@ function makeButtonRow(node, name, buttons) {
         },
 
         mouse(event, pos, n) {
-            if (event.type === "pointerdown" || event.type === "mousedown") return true;
-            if (event.type !== "pointerup" && event.type !== "mouseup") return false;
+            // 반환값은 dirty_canvas 로만 쓰인다. up 에서만 처리한다.
+            const gate = mouseGate(event);
+            if (gate === "down") return;
+            if (gate !== "up") return false;
             return this.activate(pos, event);
         },
     };
@@ -899,8 +910,10 @@ function makeHeaderRow(node) {
         },
 
         mouse(event, pos, n) {
-            if (event.type === "pointerdown" || event.type === "mousedown") return true;
-            if (event.type !== "pointerup" && event.type !== "mouseup") return false;
+            // 반환값은 dirty_canvas 로만 쓰인다. up 에서만 처리한다.
+            const gate = mouseGate(event);
+            if (gate === "down") return;
+            if (gate !== "up") return false;
             return this.activate(pos);
         },
     };

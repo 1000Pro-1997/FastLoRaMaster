@@ -1,6 +1,7 @@
 import { app } from "../../scripts/app.js";
 import { t } from "./fla_i18n.js";
 import { pickLora } from "./fla_lora_picker.js";
+import { mouseGate, releaseWidgetCapture, releaseWidgetCaptureSoon } from "./fla_widget_mouse.js";
 
 const NODE_NAME = "FLALoraTheme";
 const NONE = "-";   // 언어와 무관한 표식. 파이썬 presets.NONE 과 같아야 한다.
@@ -92,8 +93,10 @@ function syncHidden(node) {
     }
 }
 
-/** 간단한 입력 대화상자. */
+/** 간단한 입력 대화상자.
+ *  실행을 멈추는 동안 pointerup 이 사라지므로 위젯 캡처를 먼저 풀어준다. */
 function askName(title, initial = "") {
+    releaseWidgetCaptureSoon();
     return window.prompt(title, initial);
 }
 
@@ -108,6 +111,8 @@ function splitPath(input) {
 
 function notify(msg, error = false) {
     if (error) {
+        // 블로킹 대화상자라 pointerup 을 삼킬 수 있다
+        releaseWidgetCapture();
         alert(msg);
         return;
     }
@@ -123,6 +128,8 @@ function notify(msg, error = false) {
  *  event 를 주지 않으면 마지막 캔버스 클릭 위치를 쓴다.
  *  메뉴를 그냥 닫으면 문자열이 아닌 값이 오므로 null 로 정규화한다. */
 function pickFromList(list, event) {
+    // 메뉴가 커서를 덮으면 캔버스가 pointerup 을 못 받아 위젯 캡처가 남는다
+    releaseWidgetCaptureSoon();
     return new Promise((resolve) => {
         const ev = event
             ?? app.canvas.last_canvas_mouse_event
@@ -446,15 +453,13 @@ function makeLoraRow(node, lora, idx) {
         },
 
         mouse(event, pos, n) {
-            // 최신 프론트엔드는 widget.mouse 를 pointerup 으로 호출한다.
-            // down 도 오는 구버전을 위해 둘 다 받되, 같은 클릭이 두 번 처리되지 않도록
-            // down 은 눌린 위치만 기억하고 실제 동작은 up 에서 한 번만 한다.
-            const t = event.type;
-            if (t === "pointerdown" || t === "mousedown") {
+            // 반환값은 dirty_canvas 로만 쓰인다. 실제 동작은 up 에서 한 번만 한다.
+            const gate = mouseGate(event);
+            if (gate === "down") {
                 this.flaDown = true;
-                return true;
+                return;
             }
-            if (t !== "pointerup" && t !== "mouseup") return false;
+            if (gate !== "up") return false;
             this.flaDown = false;
 
             if (inBounds(pos, this.bounds.toggle)) {
@@ -482,7 +487,8 @@ function makeLoraRow(node, lora, idx) {
                 return true;
             }
             if (inBounds(pos, this.bounds.num)) {
-                // 숫자를 직접 입력받는다
+                // 숫자를 직접 입력받는다.
+                releaseWidgetCaptureSoon();
                 const v = window.prompt(t("strength"), String(lora.strength));
                 if (v !== null && !isNaN(parseFloat(v))) {
                     lora.strength = parseFloat(v);
@@ -492,7 +498,8 @@ function makeLoraRow(node, lora, idx) {
                 return true;
             }
             if (inBounds(pos, this.bounds.name)) {
-                // 이름을 누르면 그 자리에서 로라 교체 목록을 연다
+                // 이름을 누르면 그 자리에서 로라 교체 목록을 연다.
+                releaseWidgetCaptureSoon();
                 pickLora().then((choice) => {
                         if (!choice) return;
                         lora.path = choice;
@@ -725,16 +732,15 @@ app.registerExtension({
                     ctx.restore();
                 },
                 mouse(event, pos, n) {
-                    // 최신 프론트엔드는 widget.mouse 를 pointerup 으로 호출한다.
-            // down 도 오는 구버전을 위해 둘 다 받되, 같은 클릭이 두 번 처리되지 않도록
-            // down 은 눌린 위치만 기억하고 실제 동작은 up 에서 한 번만 한다.
-            const t = event.type;
-            if (t === "pointerdown" || t === "mousedown") {
-                this.flaDown = true;
-                return true;
-            }
-            if (t !== "pointerup" && t !== "mouseup") return false;
-            this.flaDown = false;
+                    // 반환값은 dirty_canvas 로만 쓰인다. up 에서만 처리한다.
+                    const gate = mouseGate(event);
+                    if (gate === "down") {
+                        this.flaDown = true;
+                        return;
+                    }
+                    if (gate !== "up") return false;
+                    this.flaDown = false;
+
                     if (inBounds(pos, this.bounds.toggle)) {
                         if (enabledW) {
                             enabledW.value = enabledW.value === false;
@@ -747,7 +753,8 @@ app.registerExtension({
                         return true;
                     }
                     if (inBounds(pos, this.bounds.name)) {
-                        // 프리셋 목록을 그 자리에서 연다
+                        // 프리셋 목록을 그 자리에서 연다.
+                        // (pickFromList 가 위젯 캡처를 풀어준다)
                         const list = presetW.options?.values ?? [NONE];
                         pickFromList(list, event).then((choice) => {
                             if (!choice) return;
@@ -920,6 +927,7 @@ app.registerExtension({
                     notify(t("noPresetSelected"), true);
                     return;
                 }
+                releaseWidgetCaptureSoon();
                 if (!confirm(t("confirmDelete", name))) return;
                 const oldTheme = themeW.value;
                 try {
@@ -1010,10 +1018,11 @@ app.registerExtension({
                     ctx.restore();
                 },
                 mouse(event, pos, n) {
-                    const t = event.type;
-                    if (t === "pointerdown" || t === "mousedown") return true;
-                    if (t !== "pointerup" && t !== "mouseup") return false;
+                    const gate = mouseGate(event);
+                    if (gate === "down") return;
+                    if (gate !== "up") return false;
                     if (inBounds(pos, this.bounds.save)) {
+                        // askName 이 필요할 때 캡처를 풀어준다
                         actSave();
                         return true;
                     }
