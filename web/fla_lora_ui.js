@@ -9,7 +9,7 @@
 import { app } from "../../scripts/app.js";
 import { t } from "./fla_i18n.js";
 import { pickLora } from "./fla_lora_picker.js";
-import { mouseGate, releaseWidgetCaptureSoon } from "./fla_widget_mouse.js";
+import { mouseGate, releaseWidgetCaptureSoon, guardMouse } from "./fla_widget_mouse.js";
 
 export const ROW_HEIGHT = 22;
 
@@ -326,7 +326,8 @@ export function makeLoraRow(node, lora, idx, opts = {}) {
     };
 
     widget[rowFlag] = true;
-    return widget;
+    // 예외가 새면 캡처가 남아 다른 위젯이 전부 먹통이 된다
+    return guardMouse(widget);
 }
 
 /** 로라 행 클릭 처리. 토글 · 삭제 · 강도 · 이름(교체) 순으로 본다. */
@@ -566,7 +567,7 @@ export function buildLoraBox(node, opts = {}) {
         },
     };
     allW[rowFlag] = true;
-    made.push(allW);
+    made.push(guardMouse(allW));
 
     // ② 로라 목록 — 가운데
     list.forEach((lora, idx) => {
@@ -629,7 +630,7 @@ export function buildLoraBox(node, opts = {}) {
         },
     };
     add[rowFlag] = true;
-    made.push(add);
+    made.push(guardMouse(add));
 
     // 호출한 쪽이 더 붙이고 싶은 줄(체크리스트의 "항목 삭제")
     for (const w of extra) {

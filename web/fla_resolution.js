@@ -1,6 +1,6 @@
 import { app } from "../../scripts/app.js";
 import { t } from "./fla_i18n.js";
-import { mouseGate, releaseWidgetCapture, releaseWidgetCaptureSoon } from "./fla_widget_mouse.js";
+import { mouseGate, releaseWidgetCapture, releaseWidgetCaptureSoon, guardNodeWidgets } from "./fla_widget_mouse.js";
 
 const NODE_NAME = "FLAResolution";
 const ROW_HEIGHT = 22;
@@ -813,6 +813,9 @@ app.registerExtension({
                 const needed = node.computeSize?.()?.[1];
                 if (needed) node.size[1] = needed;
 
+                // 예외가 새면 캡처가 남아 위젯이 전부 먹통이 된다
+                guardNodeWidgets(node);
+
                 node.setDirtyCanvas(true, true);
             };
 
@@ -914,6 +917,7 @@ app.registerExtension({
             node.widgets.push(listRow, sizeRow, ratioRow);
             const order = [listRow, sizeRow, ratioRow, editToggle];
             node.widgets = node.widgets.filter((w) => !order.includes(w)).concat(order);
+            guardNodeWidgets(node);
 
             if (!node.size?.[0] || node.size[0] < 300) {
                 node.size = [320, node.size?.[1] ?? 0];

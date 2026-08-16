@@ -83,3 +83,51 @@ export function dropCaptureFor(node) {
     if (canvas.node_widget[0] !== node) return;
     canvas.node_widget = null;
 }
+
+/** mouse 핸들러를 감싸 예외가 밖으로 새지 않게 한다.
+ *
+ *  프론트엔드는 pointerup 뒤 pointer.finally 안에서 위젯의 mouse() 를 한 번 더
+ *  부르고, 그 다음 줄에서 node_widget 을 비운다.
+ *
+ *      pointer.finally = () => {
+ *        if (widget.mouse) { ...; widget.mouse(eUp, ...) }   // ← 여기서 던지면
+ *        this.node_widget = null                             // ← 여기 도달 못 함
+ *      }
+ *
+ *  즉 우리 핸들러가 한 번이라도 예외를 던지면 캡처가 남고, 그 뒤 모든
+ *  pointermove 가 그 위젯으로만 흘러가 다른 버튼이 전부 먹통이 된다.
+ *  (처음 보고된 "한 번 클릭하면 다 안 눌림" 버그가 정확히 이것이었다)
+ *
+ *  그래서 위젯을 만들 때 이 함수로 감싸 둔다. 예외는 콘솔에만 남기고
+ *  캡처는 반드시 풀어준다.
+ */
+export function guardMouse(widget) {
+    const original = widget.mouse;
+    if (typeof original !== "function") return widget;
+    widget.mouse = function (event, pos, node) {
+        try {
+            return original.call(this, event, pos, node);
+        } catch (e) {
+            console.error("[FLA] 위젯 마우스 처리 중 오류:", e);
+            // 캡처가 남으면 다른 위젯이 전부 먹통이 되므로 반드시 푼다
+            releaseWidgetCapture();
+            return false;
+        }
+    };
+    return widget;
+}
+
+/** 이 노드의 위젯 전부를 감싼다.
+ *
+ *  커스텀 위젯이 여러 파일에 흩어져 있어 하나씩 감싸면 빠뜨리기 쉽다.
+ *  rebuild 가 끝난 뒤 이 함수를 한 번 부르면 그 시점의 위젯이 모두 보호된다.
+ *  이미 감싼 위젯은 표식을 보고 건너뛴다.
+ */
+export function guardNodeWidgets(node) {
+    for (const widget of node?.widgets ?? []) {
+        if (!widget || widget.flaGuarded) continue;
+        if (typeof widget.mouse !== "function") continue;
+        guardMouse(widget);
+        widget.flaGuarded = true;
+    }
+}

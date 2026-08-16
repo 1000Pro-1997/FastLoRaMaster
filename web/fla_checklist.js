@@ -1,7 +1,7 @@
 import { app } from "../../scripts/app.js";
 import { ComfyWidgets } from "../../scripts/widgets.js";
 import { t } from "./fla_i18n.js";
-import { mouseGate, dropCaptureFor } from "./fla_widget_mouse.js";
+import { mouseGate, dropCaptureFor, guardNodeWidgets } from "./fla_widget_mouse.js";
 // 로라 목록 UI 는 FLALoraTheme 과 공용이다. 고치려면 fla_lora_ui.js 를 본다.
 import {
     ROW_HEIGHT, findWidget, drawRoundedRect,
@@ -775,6 +775,9 @@ function rebuild(node) {
     const slack = Math.max(0, keepHeight - prevNeeded);
     node.size[1] = needed + slack;
     node.flaNeededHeight = needed;
+
+    // 어느 위젯이든 예외를 던지면 캡처가 남아 전부 먹통이 된다. 한 번에 감싼다.
+    guardNodeWidgets(node);
 
     // 크기가 정해졌으니 이제 입력칸이 제자리를 잡아도 된다
     node.flaBuilding = false;

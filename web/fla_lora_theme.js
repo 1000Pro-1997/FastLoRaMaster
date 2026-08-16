@@ -1,6 +1,6 @@
 import { app } from "../../scripts/app.js";
 import { t } from "./fla_i18n.js";
-import { mouseGate, releaseWidgetCaptureSoon, dropCaptureFor } from "./fla_widget_mouse.js";
+import { mouseGate, releaseWidgetCaptureSoon, dropCaptureFor, guardNodeWidgets } from "./fla_widget_mouse.js";
 // 로라 목록 UI 는 FLAChecklist 와 공용이다. 고치려면 fla_lora_ui.js 를 본다.
 import {
     ROW_HEIGHT, api, findWidget, notify, pickFromList, drawRoundedRect,
@@ -261,6 +261,9 @@ function rebuildLoraWidgets(node) {
     const slack = Math.max(0, keepHeight - prevNeeded);
     node.size[1] = needed + slack;
     node.flaNeededHeight = needed;
+
+    // 어느 위젯이든 예외를 던지면 캡처가 남아 전부 먹통이 된다. 한 번에 감싼다.
+    guardNodeWidgets(node);
 
     node.setDirtyCanvas(true, true);
 }
