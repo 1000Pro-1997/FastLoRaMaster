@@ -9,3 +9,6 @@ presets/
 
 # Build artifact for Comfy Registry
 node.zip
+
+# Per-user UI state (toggles, folder, favorites filter)
+user_settings.json

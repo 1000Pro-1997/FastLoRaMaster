@@ -14,6 +14,53 @@ from . import presets
 routes = PromptServer.instance.routes
 
 
+# 사용자별 UI 상태(토글·폴더·즐겨찾기 필터 등). 깃에는 올리지 않는다.
+SETTINGS_PATH = os.path.join(os.path.dirname(__file__), "user_settings.json")
+
+
+def _read_settings():
+    if not os.path.isfile(SETTINGS_PATH):
+        return {}
+    try:
+        with open(SETTINGS_PATH, "r", encoding="utf-8") as f:
+            data = json.load(f)
+    except (OSError, ValueError):
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def _write_settings(data):
+    """원자적으로 덮어쓴다. 쓰다 죽어도 기존 파일이 깨지지 않는다."""
+    temp = SETTINGS_PATH + ".tmp"
+    with open(temp, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+    os.replace(temp, SETTINGS_PATH)
+
+
+@routes.get("/fla/settings")
+async def get_settings(request):
+    return web.json_response({"settings": _read_settings()})
+
+
+@routes.post("/fla/settings")
+async def post_settings(request):
+    """받은 키만 덮어쓴다(부분 갱신). 저장 실패해도 UI 는 계속 동작해야 한다."""
+    try:
+        body = await request.json()
+    except Exception:
+        return web.json_response({"ok": False, "error": "Bad request"}, status=400)
+    patch = body.get("settings")
+    if not isinstance(patch, dict):
+        return web.json_response({"ok": False, "error": "Bad request"}, status=400)
+    data = _read_settings()
+    data.update(patch)
+    try:
+        _write_settings(data)
+    except OSError as e:
+        return web.json_response({"ok": False, "error": str(e)}, status=500)
+    return web.json_response({"ok": True, "settings": data})
+
+
 def _inside_lora_folders(path):
     resolved = os.path.realpath(path)
     for root in folder_paths.get_folder_paths("loras"):
@@ -64,6 +111,22 @@ async def get_loras(request):
     return web.json_response({"loras": folder_paths.get_filename_list("loras")})
 
 
+# Civitai nsfwLevel 비트마스크에서 R 등급(4) 이상이면 성인물로 본다.
+# 미리보기 이미지 등급(preview_nsfw_level)이 있으면 그것을 우선한다.
+ADULT_LEVEL = 4
+
+
+def _is_adult(metadata):
+    level = metadata.get("preview_nsfw_level")
+    if isinstance(level, int):
+        return level >= ADULT_LEVEL
+    civitai = metadata.get("civitai") or {}
+    level = civitai.get("nsfwLevel")
+    if isinstance(level, int):
+        return level >= ADULT_LEVEL
+    return (civitai.get("model") or {}).get("nsfw") is True
+
+
 def _lora_info(name):
     full = folder_paths.get_full_path("loras", name)
     if full is None or not os.path.isfile(full):
@@ -91,6 +154,7 @@ def _lora_info(name):
         "version": civitai.get("name") or "",
         "tags": metadata.get("tags") or (civitai.get("model") or {}).get("tags") or [],
         "favorite": metadata.get("favorite") is True,
+        "adult": _is_adult(metadata),
         "size": metadata.get("size") or os.path.getsize(full),
         "preview": preview,
         "preview_type": "video" if preview_path and os.path.splitext(preview_path)[1].lower() in (".mp4", ".webm") else "image",

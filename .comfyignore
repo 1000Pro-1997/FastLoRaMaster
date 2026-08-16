@@ -1,3 +1,4 @@
 .env
 .env.*
 node.zip
+user_settings.json
