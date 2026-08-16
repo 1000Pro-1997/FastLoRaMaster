@@ -206,6 +206,22 @@ function tone(node, color, grey = "#2a2a2a") {
     return isNodeOff(node) ? grey : color;
 }
 
+/** 포인터 콜백이 끝난 뒤 화면 위젯을 교체한다.
+ *
+ *  마우스 처리 도중에 위젯을 갈아치우면 ComfyUI 가 방금 없어진 위젯을
+ *  계속 잡고 있게 된다(canvas.node_widget). 그러면 그 뒤의 클릭·드래그가
+ *  화면에 없는 위젯으로 전달돼 아무 반응이 없다.
+ *  FLAChecklist 의 rebuildAfterPointer 와 같은 이유다.
+ */
+function rebuildAfterPointer(node) {
+    if (node.flaRebuildPending) return;
+    node.flaRebuildPending = true;
+    setTimeout(() => {
+        node.flaRebuildPending = false;
+        if (node.graph) rebuildLoraWidgets(node);
+    }, 0);
+}
+
 /** 로라 목록 UI를 다시 그린다. */
 function rebuildLoraWidgets(node) {
     // 위젯을 새로 만들면 프론트엔드가 잡아둔 옛 위젯은 죽은 참조가 된다
@@ -227,12 +243,13 @@ function rebuildLoraWidgets(node) {
         enabled: () => (lorasW ? lorasW.value !== false : true),
         setEnabled: (v) => {
             if (lorasW) lorasW.value = v;
-            rebuildLoraWidgets(node);
+            // 마우스 처리 도중이므로 위젯 교체는 뒤로 미룬다
+            rebuildAfterPointer(node);
             node.setDirtyCanvas(true, true);
         },
         onAdd: (choice) => {
             node.flaLoras.push({ path: choice, strength: 0.9, enabled: true });
-            rebuildLoraWidgets(node);
+            rebuildAfterPointer(node);
             syncHidden(node);
         },
         rowFlag: "flaLoraRow",
@@ -241,7 +258,7 @@ function rebuildLoraWidgets(node) {
             onChange: () => syncHidden(node),
             onRemove: (idx) => {
                 node.flaLoras.splice(idx, 1);
-                rebuildLoraWidgets(node);
+                rebuildAfterPointer(node);
                 syncHidden(node);
             },
         },
@@ -406,9 +423,8 @@ app.registerExtension({
                             enabledW.value = enabledW.value === false;
                             enabledW.callback?.(enabledW.value);
                         }
-                        // 로라 영역 버튼 색은 addWidget 으로 칠해둔 값이라
-                        // 다시 만들어야 회색/원래색이 반영된다.
-                        rebuildLoraWidgets(node);
+                        // 로라 영역 색은 다시 만들어야 회색/원래색이 반영된다.
+                        rebuildAfterPointer(node);
                         node.setDirtyCanvas(true, true);
                         return true;
                     }
