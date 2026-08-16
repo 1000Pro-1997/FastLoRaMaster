@@ -62,7 +62,7 @@ function addStyles() {
       .fla-lp-dt-head{display:flex;align-items:flex-start;gap:10px;padding:13px 14px;background:#22262d;border-bottom:1px solid #383e48}.fla-lp-dt-head h2{flex:1;margin:0;font-size:16px;font-weight:700;color:#fff;overflow-wrap:anywhere}.fla-lp-dt-head .sub{margin-top:3px;color:#98a1ad;font-size:12px;overflow-wrap:anywhere}.fla-lp-dt-head button{flex:none;width:34px;height:34px;padding:0;color:#ddd;background:#303640;border:1px solid #454c58;border-radius:7px;font-size:19px;cursor:pointer}.fla-lp-dt-head button:hover{background:#3a424e}
       .fla-lp-dt-tabs{display:flex;gap:2px;padding:0 12px;background:#1d2026;border-bottom:1px solid #383e48}.fla-lp-dt-tabs button{position:relative;padding:11px 16px;color:#98a1ad;background:transparent;border:0;font-size:13px;font-weight:600;cursor:pointer}.fla-lp-dt-tabs button:hover{color:#c8cdd5}.fla-lp-dt-tabs button.on{color:#5aa9ff}.fla-lp-dt-tabs button.on::after{content:"";position:absolute;left:8px;right:8px;bottom:-1px;height:2px;background:#5aa9ff;border-radius:2px}
       .fla-lp-dt-body{flex:1;min-height:0;padding:14px;overflow-y:auto}
-      .fla-lp-dt-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}.fla-lp-dt-shot{position:relative;display:block;overflow:hidden;background:#111318;border:1px solid #3b424d;border-radius:9px}.fla-lp-dt-frame{position:relative;overflow:hidden}.fla-lp-dt-shot img{display:block;width:100%;height:auto}.fla-lp-dt-meta{padding:8px 10px;color:#aab2bd;font-size:11px;line-height:1.45;border-top:1px solid #2c323b}.fla-lp-dt-meta b{color:#c8cdd5;font-weight:600}.fla-lp-dt-metahead{display:flex;align-items:center;gap:8px;margin-bottom:5px}.fla-lp-dt-metahead b{flex:1}.fla-lp-dt-copy{flex:none;padding:3px 9px;color:#dbe3ea;background:#2b3138;border:1px solid #3d444e;border-radius:5px;font-size:11px;cursor:pointer}.fla-lp-dt-copy:hover{background:#3a424e;border-color:#5a6472}.fla-lp-dt-prompt{max-height:74px;overflow-y:auto;overflow-wrap:anywhere}
+      .fla-lp-dt-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}.fla-lp-dt-shot{position:relative;display:block;overflow:hidden;background:#111318;border:1px solid #3b424d;border-radius:9px}.fla-lp-dt-frame{position:relative;overflow:hidden}.fla-lp-dt-shot img,.fla-lp-dt-shot video{display:block;width:100%;height:auto}.fla-lp-dt-meta{padding:8px 10px;color:#aab2bd;font-size:11px;line-height:1.45;border-top:1px solid #2c323b}.fla-lp-dt-meta b{color:#c8cdd5;font-weight:600}.fla-lp-dt-metahead{display:flex;align-items:center;gap:8px;margin-bottom:5px}.fla-lp-dt-metahead b{flex:1}.fla-lp-dt-copy{flex:none;padding:3px 9px;color:#dbe3ea;background:#2b3138;border:1px solid #3d444e;border-radius:5px;font-size:11px;cursor:pointer}.fla-lp-dt-copy:hover{background:#3a424e;border-color:#5a6472}.fla-lp-dt-prompt{max-height:74px;overflow-y:auto;overflow-wrap:anywhere}
       .fla-lp-dt-rows{display:grid;grid-template-columns:max-content 1fr;gap:9px 16px;align-items:start}.fla-lp-dt-rows dt{color:#8d95a1;font-size:12px}.fla-lp-dt-rows dd{margin:0;color:#dde2e8;font-size:13px;overflow-wrap:anywhere}
       .fla-lp-dt-desc{color:#c8cdd5;font-size:13px;line-height:1.65;overflow-wrap:anywhere}.fla-lp-dt-desc p{margin:0 0 9px}.fla-lp-dt-desc a{color:#5aa9ff}.fla-lp-dt-desc img{max-width:100%;height:auto;border-radius:6px}
       .fla-lp-dt-chips{display:flex;flex-wrap:wrap;gap:5px}.fla-lp-dt-chip{padding:3px 9px;color:#dbe3ea;background:#2b3138;border:1px solid #3d444e;border-radius:20px;font-size:12px;cursor:pointer}.fla-lp-dt-chip:hover{background:#3a424e;border-color:#5a6472}
@@ -269,9 +269,22 @@ export async function showLoraDetail(name, blurAdult = true) {
 
             const frame = document.createElement("div");
             frame.className = "fla-lp-dt-frame";
-            const img = document.createElement("img");
+            // 예시는 이미지일 수도, 짧은 영상(mp4/webm)일 수도 있다.
+            // type 이 없으면 확장자로 판단한다.
+            const isVideo = shot.type === "video"
+                || /\.(mp4|webm)(\?|$)/i.test(shot.url);
+            const img = document.createElement(isVideo ? "video" : "img");
             img.src = shot.url;
-            img.loading = "lazy";
+            if (isVideo) {
+                // 소리 없이 자동으로 반복 재생한다(움짤처럼 보이게)
+                img.muted = true;
+                img.loop = true;
+                img.autoplay = true;
+                img.playsInline = true;
+                img.preload = "metadata";
+            } else {
+                img.loading = "lazy";
+            }
             img.onerror = () => box.remove();
             frame.appendChild(img);
 
