@@ -1,20 +1,15 @@
 import { app } from "../../scripts/app.js";
 import { t } from "./fla_i18n.js";
-import { pickLora } from "./fla_lora_picker.js";
-import { mouseGate, releaseWidgetCapture, releaseWidgetCaptureSoon } from "./fla_widget_mouse.js";
+import { mouseGate, releaseWidgetCaptureSoon } from "./fla_widget_mouse.js";
+// 로라 목록 UI 는 FLAChecklist 와 공용이다. 고치려면 fla_lora_ui.js 를 본다.
+import {
+    ROW_HEIGHT, api, findWidget, notify, pickFromList, drawRoundedRect,
+    drawToggle, fitText, inBounds, isNodeOff,
+    buildLoraBox, paint,
+} from "./fla_lora_ui.js";
 
 const NODE_NAME = "FLALoraTheme";
 const NONE = "-";   // 언어와 무관한 표식. 파이썬 presets.NONE 과 같아야 한다.
-
-async function api(url, options) {
-    const res = await fetch(url, options);
-    if (!res.ok) {
-        let msg = res.statusText;
-        try { msg = (await res.json()).error || msg; } catch (e) { /* 본문 없음 */ }
-        throw new Error(msg);
-    }
-    return res.json();
-}
 
 const getThemes = () => api("/fla/themes").then(r => r.themes);
 const getPresets = (theme) => api(`/fla/presets?theme=${encodeURIComponent(theme)}`).then(r => r.presets);
@@ -26,11 +21,6 @@ const post = (url, body) => api(url, {
     body: JSON.stringify(body),
 });
 
-
-/** 위젯을 이름으로 찾는다. */
-function findWidget(node, name) {
-    return node.widgets?.find(w => w.name === name);
-}
 
 /** 현재 노드 상태를 프리셋 데이터로 만든다. */
 function collect(node) {
@@ -107,52 +97,6 @@ function splitPath(input) {
     if (parts.length === 0) return { theme: "", name: "" };
     if (parts.length === 1) return { theme: "", name: parts[0] };
     return { theme: parts[0], name: parts.slice(1).join(" ") };
-}
-
-function notify(msg, error = false) {
-    if (error) {
-        // 블로킹 대화상자라 pointerup 을 삼킬 수 있다
-        releaseWidgetCapture();
-        alert(msg);
-        return;
-    }
-    const toast = app.extensionManager?.toast;
-    if (toast?.add) {
-        toast.add({ severity: "success", summary: msg, life: 2000 });
-    } else {
-        console.log("[FLA]", msg);
-    }
-}
-
-/** 로라 선택 팝업. 클릭한 자리에서 열리도록 이벤트를 넘겨준다.
- *  event 를 주지 않으면 마지막 캔버스 클릭 위치를 쓴다.
- *  메뉴를 그냥 닫으면 문자열이 아닌 값이 오므로 null 로 정규화한다. */
-function pickFromList(list, event) {
-    // 메뉴가 커서를 덮으면 캔버스가 pointerup 을 못 받아 위젯 캡처가 남는다
-    releaseWidgetCaptureSoon();
-    return new Promise((resolve) => {
-        const ev = event
-            ?? app.canvas.last_canvas_mouse_event
-            ?? { clientX: 400, clientY: 300 };
-        const menu = new LiteGraph.ContextMenu(list, {
-            scale: Math.max(1, app.canvas.ds.scale),
-            event: ev,
-            callback: (v) => {
-                // 취소하거나 객체가 오면 선택하지 않은 것으로 본다
-                if (typeof v === "string") resolve(v);
-                else if (v && typeof v.content === "string") resolve(v.content);
-                else resolve(null);
-            },
-        });
-
-        // 목록이 길면 스크롤이 생기도록 높이를 제한한다.
-        // 기본 스타일의 max-height 가 브라우저에 따라 동작하지 않는 경우가 있다.
-        const root = menu?.root;
-        if (root) {
-            root.style.maxHeight = "60vh";
-            root.style.overflowY = "auto";
-        }
-    });
 }
 
 /** 이 노드 뒤에 같은 노드를 하나 더 만들어 체인으로 끼워 넣는다.
@@ -251,267 +195,15 @@ const BTN = {
     theme: "#4a3a5e",    // 테마 관련 — 보라
 };
 
-/** 위젯 배경색을 개별로 덮어쓴다. background_color 는 프로토타입 getter라 재정의가 필요하다. */
-function paint(widget, color) {
-    Object.defineProperty(widget, "background_color", {
-        get: () => color,
-        configurable: true,
-    });
-    return widget;
-}
-
 // ─────────── 캔버스 그리기 헬퍼 (rgthree 파워 로라 로더 방식) ───────────
 
-const ARROW_W = 9;
-const ARROW_H = 10;
-const NUM_W = 32;
-const INNER = 3;
-const NUM_TOTAL = ARROW_W + INNER + NUM_W + INNER + ARROW_W;
 
 // 로라 한 줄의 높이와 노드 최소 폭. 줄 높이를 고정해 크기가 튀지 않게 한다.
-const ROW_HEIGHT = 22;
 const MIN_NODE_WIDTH = 340;
-
-/** 이 노드 전체가 꺼진 상태인지(프롬프트 토글 off). 꺼지면 색을 모두 회색으로 만든다. */
-function isNodeOff(node) {
-    return node?.flaHidden?.prompt_enabled?.value === false;
-}
 
 /** 노드가 꺼져 있으면 회색을, 아니면 원래 색을 돌려준다. */
 function tone(node, color, grey = "#2a2a2a") {
     return isNodeOff(node) ? grey : color;
-}
-
-/** 둥근 사각 배경. */
-function drawRoundedRect(ctx, x, y, w, h, fill, stroke) {
-    ctx.save();
-    ctx.beginPath();
-    ctx.roundRect(x, y, w, h, [h * 0.25]);
-    ctx.fillStyle = fill;
-    ctx.fill();
-    if (stroke) {
-        ctx.strokeStyle = stroke;
-        ctx.lineWidth = 1;
-        ctx.stroke();
-    }
-    ctx.restore();
-}
-
-/** 좌측 토글 스위치. 클릭 범위 [x, width] 를 돌려준다. */
-function drawToggle(ctx, posX, posY, height, value, live = true) {
-    const radius = height * 0.36;
-    const bgWidth = height * 1.5;
-
-    ctx.save();
-    ctx.beginPath();
-    ctx.roundRect(posX + 4, posY + 4, bgWidth - 8, height - 8, [height * 0.5]);
-    ctx.globalAlpha = 0.25;
-    ctx.fillStyle = "rgba(255,255,255,0.45)";
-    ctx.fill();
-    ctx.globalAlpha = 1;
-
-    ctx.fillStyle = (value && live) ? "#89B" : "#888";
-    const knobX = value ? posX + height : posX + height * 0.5;
-    ctx.beginPath();
-    ctx.arc(knobX, posY + height * 0.5, radius, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-
-    return [posX, bgWidth];
-}
-
-/** 우측 숫자 조절부(◀ 0.90 ▶). 오른쪽 끝 기준으로 왼쪽으로 그린다.
- *  [왼쪽화살표, 숫자, 오른쪽화살표] 각각의 [x, width] 를 돌려준다. */
-function drawNumber(ctx, rightX, posY, height, value) {
-    const midY = posY + height / 2;
-    let posX = rightX - NUM_TOTAL;
-
-    ctx.save();
-    ctx.fillStyle = LiteGraph.WIDGET_TEXT_COLOR ?? "#DDD";
-
-    // ◀
-    ctx.fill(new Path2D(
-        `M ${posX} ${midY} l ${ARROW_W} ${ARROW_H / 2} l 0 -${ARROW_H} L ${posX} ${midY} z`
-    ));
-    const left = [posX, ARROW_W];
-    posX += ARROW_W + INNER;
-
-    // 숫자
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText(value.toFixed(2), posX + NUM_W / 2, midY);
-    const num = [posX, NUM_W];
-    posX += NUM_W + INNER;
-
-    // ▶
-    ctx.fill(new Path2D(
-        `M ${posX} ${midY - ARROW_H / 2} l ${ARROW_W} ${ARROW_H / 2} l -${ARROW_W} ${ARROW_H / 2} v -${ARROW_H} z`
-    ));
-    const right = [posX, ARROW_W];
-
-    ctx.restore();
-    return [left, num, right];
-}
-
-/** 폭에 맞게 문자열을 줄인다. 앞을 자르고 … 를 붙인다. */
-function fitText(ctx, text, maxWidth) {
-    if (ctx.measureText(text).width <= maxWidth) return text;
-    let s = text;
-    while (s.length > 1 && ctx.measureText("…" + s).width > maxWidth) {
-        s = s.slice(1);
-    }
-    return "…" + s;
-}
-
-/** 클릭 좌표가 [x, width] 범위 안인지. */
-function inBounds(pos, bounds) {
-    if (!bounds) return false;
-    return pos[0] >= bounds[0] && pos[0] <= bounds[0] + bounds[1];
-}
-
-/** 로라 이름을 보기 좋게 줄인다. 폴더는 남기고 확장자는 뗀다. */
-function prettyLora(path) {
-    const noExt = path.replace(/\.safetensors$|\.ckpt$|\.pt$/i, "");
-    const parts = noExt.split(/[\\/]/);
-    const file = parts.pop();
-    const dir = parts.length ? parts[parts.length - 1] + "/" : "";
-    const full = dir + file;
-    return full.length > 30 ? "…" + full.slice(-29) : full;
-}
-
-/** 로라 한 줄을 담당하는 커스텀 위젯을 만든다.
- *  왼쪽 토글 / 가운데 이름(클릭하면 교체) / 오른쪽 강도 조절. */
-function makeLoraRow(node, lora, idx) {
-    const widget = {
-        type: "custom",
-        name: "fla_lora_" + idx,
-        serialize: false,   // 값이 없는 표시용 위젯
-        value: lora,
-        flaLoraRow: true,
-        // 마우스를 올리면 전체 경로를 보여준다. 이름은 폭에 맞춰 잘리기 때문이다.
-        tooltip: "",
-        // 클릭 판정 영역. draw 때마다 갱신된다.
-        bounds: { toggle: null, name: null, dec: null, num: null, inc: null, del: null },
-
-        // 폭은 요구하지 않는다(0). 0 을 돌려줘야 사용자가 좁혀놓은 폭이 유지된다.
-        computeSize() {
-            return [0, ROW_HEIGHT];
-        },
-
-        draw(ctx, n, widgetWidth, posY, height) {
-            const margin = 10;
-            const inner = margin * 0.33;
-            const midY = posY + height * 0.5;
-            // 노드 실제 폭을 기준으로 그린다. 인자로 오는 폭은 버전마다 다르다.
-            const width = node.size?.[0] ?? widgetWidth;
-            // 로라 전체 바이패스거나 노드 전체가 꺼지면 초록을 회색으로 바꾼다
-            const bypassed = node.flaHidden?.loras_enabled?.value === false
-                || isNodeOff(node);
-
-            const live = lora.enabled && !bypassed;
-            drawRoundedRect(
-                ctx, margin, posY, width - margin * 2, height,
-                live ? "#2a3a2c" : "#2a2a2a",
-                live ? "#3f6146" : "#3a3a3a",
-            );
-
-            let posX = margin;
-            this.bounds.toggle = drawToggle(ctx, posX, posY, height, lora.enabled, !bypassed);
-            posX += this.bounds.toggle[1] + inner;
-
-            ctx.save();
-            // 꺼진 로라, 또는 전체 바이패스 상태면 흐리게 보여준다
-            if (!lora.enabled) ctx.globalAlpha = 0.45;
-            else if (bypassed) ctx.globalAlpha = 0.5;
-
-            // 오른쪽 끝: 삭제 버튼
-            const delW = 14;
-            const delX = width - margin - inner - delW;
-            ctx.fillStyle = "#a66";
-            ctx.textAlign = "center";
-            ctx.textBaseline = "middle";
-            ctx.fillText("✕", delX + delW / 2, midY);
-            this.bounds.del = [delX, delW];
-
-            // 그 왼쪽: 강도 조절
-            const numRight = delX - inner * 2;
-            const [dec, num, inc] = drawNumber(ctx, numRight, posY, height, lora.strength);
-            this.bounds.dec = dec;
-            this.bounds.num = num;
-            this.bounds.inc = inc;
-
-            // 가운데: 이름 (남는 폭을 전부 쓴다)
-            const nameLeft = posX;
-            const nameRight = dec[0] - inner * 2;
-            const nameW = Math.max(10, nameRight - nameLeft);
-            ctx.fillStyle = LiteGraph.WIDGET_TEXT_COLOR ?? "#DDD";
-            ctx.textAlign = "left";
-            ctx.fillText(fitText(ctx, prettyLora(lora.path), nameW), nameLeft, midY);
-            this.bounds.name = [nameLeft, nameW];
-
-            ctx.restore();
-        },
-
-        mouse(event, pos, n) {
-            // 반환값은 dirty_canvas 로만 쓰인다. 실제 동작은 up 에서 한 번만 한다.
-            const gate = mouseGate(event);
-            if (gate === "down") {
-                this.flaDown = true;
-                return;
-            }
-            if (gate !== "up") return false;
-            this.flaDown = false;
-
-            if (inBounds(pos, this.bounds.toggle)) {
-                lora.enabled = !lora.enabled;
-                syncHidden(node);
-                node.setDirtyCanvas(true, true);
-                return true;
-            }
-            if (inBounds(pos, this.bounds.del)) {
-                node.flaLoras.splice(idx, 1);
-                rebuildLoraWidgets(node);
-                syncHidden(node);
-                return true;
-            }
-            if (inBounds(pos, this.bounds.dec)) {
-                lora.strength = Math.round((lora.strength - 0.05) * 100) / 100;
-                syncHidden(node);
-                node.setDirtyCanvas(true, true);
-                return true;
-            }
-            if (inBounds(pos, this.bounds.inc)) {
-                lora.strength = Math.round((lora.strength + 0.05) * 100) / 100;
-                syncHidden(node);
-                node.setDirtyCanvas(true, true);
-                return true;
-            }
-            if (inBounds(pos, this.bounds.num)) {
-                // 숫자를 직접 입력받는다.
-                releaseWidgetCaptureSoon();
-                const v = window.prompt(t("strength"), String(lora.strength));
-                if (v !== null && !isNaN(parseFloat(v))) {
-                    lora.strength = parseFloat(v);
-                    syncHidden(node);
-                    node.setDirtyCanvas(true, true);
-                }
-                return true;
-            }
-            if (inBounds(pos, this.bounds.name)) {
-                // 이름을 누르면 그 자리에서 로라 교체 목록을 연다.
-                releaseWidgetCaptureSoon();
-                pickLora().then((choice) => {
-                        if (!choice) return;
-                        lora.path = choice;
-                        syncHidden(node);
-                        node.setDirtyCanvas(true, true);
-                });
-                return true;
-            }
-            return false;
-        },
-    };
-    return widget;
 }
 
 /** 로라 목록 UI를 다시 그린다. */
@@ -524,75 +216,37 @@ function rebuildLoraWidgets(node) {
     node.widgets = (node.widgets ?? []).filter((w) => !w.flaLoraRow);
 
     const loras = node.flaLoras ?? [];
-    const onCount = loras.filter((l) => l.enabled).length;
     const lorasW = findWidget(node, "loras_enabled");
-    // 노드 전체가 꺼져 있으면 로라 영역도 회색으로 본다
-    const bypassOn = (lorasW ? lorasW.value !== false : true) && !isNodeOff(node);
 
-    // ① 로라 적용 토글 — 맨 위
-    const allW = node.addWidget(
-        "toggle",
-        t("applyLora") + `  (${onCount}/${loras.length})`,
-        bypassOn,
-        (v) => {
+    // 로라 적용 토글 ~ 로라 추가 버튼까지 한 박스로. FLAChecklist 와 공용이다.
+    const box = buildLoraBox(node, {
+        loras: () => loras,
+        enabled: () => (lorasW ? lorasW.value !== false : true),
+        setEnabled: (v) => {
             if (lorasW) lorasW.value = v;
             rebuildLoraWidgets(node);
             node.setDirtyCanvas(true, true);
         },
-    );
-    allW.flaLoraRow = true;
-    allW.flaBoxTop = true;   // 박스의 시작
-    // 실제 값은 파이썬의 loras_enabled 위젯이 들고 있다. 저장 슬롯을 차지하지 않게 한다.
-    allW.serialize = false;
-    allW.tooltip = t("tipLoraBypass");
-    paint(allW, bypassOn ? COLORS.header : "#2a2a2a");
-
-    // ② 로라 목록 — 가운데
-    loras.forEach((lora, idx) => {
-        node.widgets.push(makeLoraRow(node, lora, idx));
-    });
-
-    const add = node.addWidget("button", t("addLora"), null, async (v, canvas, n, pos, event) => {
-        // 목록에서 고른 뒤에만 줄을 추가한다 (취소하면 아무 일도 없음)
-        const choice = await pickLora();
-        if (!choice) return;
-        node.flaLoras.push({ path: choice, strength: 0.9, enabled: true });
-        rebuildLoraWidgets(node);
-        syncHidden(node);
-    });
-    add.flaLoraRow = true;
-    add.serialize = false;   // 버튼이라 저장할 값이 없다
-    paint(add, bypassOn ? COLORS.action : "#2a2a2a");
-
-    // 로라 영역을 감싸는 테두리.
-    // 높이를 차지하지 않는 위젯을 맨 앞에 두고, 거기서 영역 전체를 한 번에 그린다.
-    // 각 위젯의 last_y 는 프론트엔드가 배치할 때 채워준다.
-    const boxW = {
-        type: "custom",
-        name: "fla_lora_box",
-        serialize: false,   // 값이 없는 표시용 위젯
-        flaLoraRow: true,
-        computeSize() {
-            return [0, 0];
+        onAdd: (choice) => {
+            node.flaLoras.push({ path: choice, strength: 0.9, enabled: true });
+            rebuildLoraWidgets(node);
+            syncHidden(node);
         },
-        draw(ctx, n, widgetWidth, posY) {
-            const width = node.size?.[0] ?? widgetWidth;
-            const top = (allW.last_y ?? posY) - 3;
-            const bottom = (add.last_y ?? top) + ROW_HEIGHT + 3;
-            if (bottom <= top) return;
-            ctx.save();
-            ctx.beginPath();
-            ctx.roundRect(6, top, Math.max(20, width - 12), bottom - top, 6);
-            ctx.strokeStyle = bypassOn ? "#3f6146" : "#4a4a4a";
-            ctx.lineWidth = 1;
-            ctx.stroke();
-            ctx.restore();
+        rowFlag: "flaLoraRow",
+        rowOpts: {
+            margin: 10,
+            onChange: () => syncHidden(node),
+            onRemove: (idx) => {
+                node.flaLoras.splice(idx, 1);
+                rebuildLoraWidgets(node);
+                syncHidden(node);
+            },
         },
-    };
-    node.widgets.push(boxW);
-    // 박스는 다른 로라 위젯보다 먼저 그려지도록 맨 앞으로 보낸다
-    node.widgets.splice(node.widgets.indexOf(boxW), 1);
-    node.widgets.splice(node.widgets.indexOf(allW), 0, boxW);
+        tooltip: t("tipLoraBypass"),
+    });
+    // addWidget 이 이미 node.widgets 에 넣어둔 것들을 걷어내고 박스 순서대로 다시 넣는다
+    node.widgets = node.widgets.filter((w) => !box.includes(w));
+    node.widgets.push(...box);
 
     // 폭은 사용자가 정한 값을 그대로 둔다. 좁혀놨으면 좁은 채로 유지한다.
     // 높이는 줄 수에 맞춰 계산하되, 사용자가 늘려둔 여백은 존중한다.
