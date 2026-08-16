@@ -255,7 +255,8 @@ export async function showLoraDetail(name, blurAdult = true, onPreviewChanged = 
     const tabsHost = bg.querySelector(".fla-lp-dt-tabs");
     const body = bg.querySelector(".fla-lp-dt-body");
 
-    const close = () => { document.removeEventListener("keydown", key); bg.remove(); };
+    // 등록할 때와 같은 capture 플래그로 지워야 실제로 떨어진다
+    const close = () => { document.removeEventListener("keydown", key, true); bg.remove(); };
     // 상세 창이 열려 있으면 Esc 가 로라 목록까지 닫지 않도록 여기서 막는다
     const key = (event) => { if (event.key === "Escape") { event.stopPropagation(); close(); } };
     bg.querySelector(".close").onclick = close;
@@ -586,7 +587,18 @@ export async function pickLora() {
             searchTimer = setTimeout(render, SEARCH_DELAY);
         };
 
-        const close = (value = null) => { clearTimeout(searchTimer); document.removeEventListener("keydown", key); document.removeEventListener("click", outside); bg.remove(); resolve(value); };
+        // 한 번만 닫는다. 카드 클릭 뒤 배경 클릭이 이어 들어와
+        // close(null) 이 덮어쓰는 일이 없도록 막는다.
+        let closed = false;
+        const close = (value = null) => {
+            if (closed) return;
+            closed = true;
+            clearTimeout(searchTimer);
+            document.removeEventListener("keydown", key);
+            document.removeEventListener("click", outside);
+            bg.remove();
+            resolve(value);
+        };
         const key = (event) => { if (event.key === "Escape") bg.querySelector(".fla-lp-menu") ? closeMenus() : close(); };
         const outside = (event) => { if (!event.target.closest(".fla-lp-crumb")) closeMenus(); };
         const choose = (value) => {
