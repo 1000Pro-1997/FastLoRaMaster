@@ -38,7 +38,7 @@ Check a box, and both go in. That's the whole idea.
 Pick a theme, pick a preset, and the prompt is right there — editable in place.
 Change it, save it, and the change is live everywhere that preset is used.
 
-![Editing a theme prompt](media/01-theme-prompt-edit.gif)
+![Editing a theme prompt](https://raw.githubusercontent.com/1000Pro-1997/SmartNode1000/main/media/01-theme-prompt-edit.gif)
 
 ---
 
@@ -53,7 +53,7 @@ they always travel together:
 
 Switch the preset and both swap at once. You never load the wrong LoRA for the wrong prompt again.
 
-![Per-preset LoRA sets](media/02-per-preset-loras.gif)
+![Per-preset LoRA sets](https://raw.githubusercontent.com/1000Pro-1997/SmartNode1000/main/media/02-per-preset-loras.gif)
 
 ---
 
@@ -63,7 +63,7 @@ Hover any LoRA row to see its preview card without leaving the canvas.
 Set strength however you like — **drag**, **scroll the wheel**, or **type the number**.
 Save it into the preset and it comes back that way every time.
 
-![LoRA preview and strength](media/03-lora-preview-strength.gif)
+![LoRA preview and strength](https://raw.githubusercontent.com/1000Pro-1997/SmartNode1000/main/media/03-lora-preview-strength.gif)
 
 > **Where do the previews come from?**
 > SmartNode1000 reads the standard sidecar files that sit next to your LoRA —
@@ -83,7 +83,7 @@ Save it into the preset and it comes back that way every time.
 Themes are just folders of presets. Create one, name it, start filling it.
 Nothing to configure and no file to hand-edit.
 
-![Creating a new theme](media/04-new-theme.gif)
+![Creating a new theme](https://raw.githubusercontent.com/1000Pro-1997/SmartNode1000/main/media/04-new-theme.gif)
 
 ---
 
@@ -92,7 +92,7 @@ Nothing to configure and no file to hand-edit.
 One node handles one theme. Need several at once? Wire them in a row —
 model, clip and prompt flow through, each node adding its own layer.
 
-![Chaining theme nodes](media/05-chain-themes.gif)
+![Chaining theme nodes](https://raw.githubusercontent.com/1000Pro-1997/SmartNode1000/main/media/05-chain-themes.gif)
 
 ---
 
@@ -105,7 +105,7 @@ insert, Esc to close. Favourites are pinned to the top with a star.
 SmartNode1000 finds your wildcard folders automatically, wherever they live under
 ComfyUI — `wildcards`, `wild cards`, `WildCard`, it doesn't care about spelling.
 
-![Wildcard autocomplete](media/06-wildcard-autocomplete.gif)
+![Wildcard autocomplete](https://raw.githubusercontent.com/1000Pro-1997/SmartNode1000/main/media/06-wildcard-autocomplete.gif)
 
 ---
 
@@ -114,7 +114,7 @@ ComfyUI — `wildcards`, `wild cards`, `WildCard`, it doesn't care about spellin
 A full picker with a folder tree, search, favourites and a live preview of each file's
 contents. Read them, pick from the list, edit them on the spot.
 
-![Wildcard picker](media/07-wildcard-manager.gif)
+![Wildcard picker](https://raw.githubusercontent.com/1000Pro-1997/SmartNode1000/main/media/07-wildcard-manager.gif)
 
 ---
 
@@ -123,7 +123,7 @@ contents. Read them, pick from the list, edit them on the spot.
 Every checklist item is its own prompt + LoRA pair. Tick the ones you want; the prompts
 are appended and the LoRAs are applied, in order.
 
-![Checklist with LoRAs](media/08-checklist-loras.gif)
+![Checklist with LoRAs](https://raw.githubusercontent.com/1000Pro-1997/SmartNode1000/main/media/08-checklist-loras.gif)
 
 ---
 
@@ -132,7 +132,7 @@ are appended and the LoRAs are applied, in order.
 The gear opens a panel: rename the item, edit its prompt, attach or drop LoRAs.
 An item can carry any number of LoRAs, or none at all — a pure prompt toggle is fine.
 
-![Editing checklist items](media/09-checklist-edit.gif)
+![Editing checklist items](https://raw.githubusercontent.com/1000Pro-1997/SmartNode1000/main/media/09-checklist-edit.gif)
 
 ---
 
@@ -145,7 +145,7 @@ every workflow that uses it is updated. This is your permanent library.
 checklists in the same workflow can hold completely different things. This is your
 per-workflow scratch space.
 
-![JSON vs node storage](media/10-json-vs-node-storage.gif)
+![JSON vs node storage](https://raw.githubusercontent.com/1000Pro-1997/SmartNode1000/main/media/10-json-vs-node-storage.gif)
 
 ---
 
@@ -154,7 +154,7 @@ per-workflow scratch space.
 Set one side and let the other follow the aspect ratio, pick from a grouped list, or just
 type both numbers. Outputs plain `width` / `height` integers, so it drops into any workflow.
 
-![Resolution ratio lock](media/11-resolution-ratio.gif)
+![Resolution ratio lock](https://raw.githubusercontent.com/1000Pro-1997/SmartNode1000/main/media/11-resolution-ratio.gif)
 
 ---
 
@@ -164,7 +164,7 @@ Add the sizes you actually use, delete the ones you don't, star your favourites 
 them at the top. Reset to defaults whenever you want — your list is never overwritten by
 an update.
 
-![Managing resolutions](media/12-resolution-manage.gif)
+![Managing resolutions](https://raw.githubusercontent.com/1000Pro-1997/SmartNode1000/main/media/12-resolution-manage.gif)
 
 ---
 
