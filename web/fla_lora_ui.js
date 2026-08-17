@@ -10,6 +10,7 @@ import { app } from "../../scripts/app.js";
 import { t } from "./fla_i18n.js";
 import { pickLora, makeLoraCardPreview } from "./fla_lora_picker.js";
 import { mouseGate, releaseWidgetCaptureSoon, guardMouse } from "./fla_widget_mouse.js";
+import { markHit, hitColors } from "./fla_hit.js";
 
 export const ROW_HEIGHT = 22;
 const BOX_PAD_Y = 4;
@@ -418,7 +419,7 @@ export function makeLoraRow(node, lora, idx, opts = {}) {
             const delW = height - 8;
             const delX = width - margin - inner - delW;
             drawRoundedRect(ctx, delX, posY + 4, delW, delW,
-                ROW_COLORS.delBg, ROW_COLORS.delEdge);
+                ...hitColors(this, "del", ROW_COLORS.delBg, ROW_COLORS.delEdge, !off));
             ctx.fillStyle = "#fff";
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
@@ -485,7 +486,7 @@ export function makeLoraRow(node, lora, idx, opts = {}) {
 
     widget[rowFlag] = true;
     // 예외가 새면 캡처가 남아 다른 위젯이 전부 먹통이 된다
-    return guardMouse(widget);
+    return guardMouse(markHit(widget));
 }
 
 /** 로라 행 클릭 처리. 토글 · 삭제 · 강도 · 이름(교체) 순으로 본다. */
@@ -641,7 +642,7 @@ export function buildLoraBox(node, opts = {}) {
                 // 캡슐 (가운데)
                 const capX = incX - INNER - capW;
                 drawRoundedRect(ctx, capX, posY + 4, capW, height - 8,
-                    "#333a45", "#4a5568");
+                    ...hitColors(this, "all", "#333a45", "#4a5568", on));
                 ctx.fillStyle = "#bcd";
                 ctx.textAlign = "center";
                 ctx.fillText(capLabel, capX + capW / 2, midY);
@@ -726,7 +727,7 @@ export function buildLoraBox(node, opts = {}) {
         },
     };
     allW[rowFlag] = true;
-    made.push(guardMouse(allW));
+    made.push(guardMouse(markHit(allW)));
 
     // ② 로라 목록 — 가운데
     list.forEach((lora, idx) => {
@@ -767,8 +768,9 @@ export function buildLoraBox(node, opts = {}) {
             const width = widgetWidth;
             drawRoundedRect(
                 ctx, margin, posY, width - margin * 2, height,
-                on ? BOX_COLORS.action : BOX_COLORS.grey,
-                on ? "#6b5333" : "#3a3a3a",
+                ...hitColors(this, "all",
+                    on ? BOX_COLORS.action : BOX_COLORS.grey,
+                    on ? "#6b5333" : "#3a3a3a", on),
             );
             ctx.save();
             if (!on) ctx.globalAlpha = 0.45;
@@ -790,7 +792,7 @@ export function buildLoraBox(node, opts = {}) {
         },
     };
     add[rowFlag] = true;
-    made.push(guardMouse(add));
+    made.push(guardMouse(markHit(add)));
 
     // 호출한 쪽이 더 붙이고 싶은 줄(체크리스트의 "항목 삭제")
     for (const w of extra) {

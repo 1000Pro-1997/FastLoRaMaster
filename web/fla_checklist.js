@@ -2,6 +2,7 @@ import { app } from "../../scripts/app.js";
 import { ComfyWidgets } from "../../scripts/widgets.js";
 import { t } from "./fla_i18n.js";
 import { mouseGate, dropCaptureFor, guardNodeWidgets } from "./fla_widget_mouse.js";
+import { hitColors, hitText } from "./fla_hit.js";
 // 로라 목록 UI 는 FLALoraTheme 과 공용이다. 고치려면 fla_lora_ui.js 를 본다.
 import {
     ROW_HEIGHT, LAYOUT_PAD, findWidget, drawRoundedRect,
@@ -109,8 +110,9 @@ function makeItemRow(node, item, idx) {
 
             drawRoundedRect(
                 ctx, margin, posY, width - margin * 2, height,
-                live ? "#2a3a2c" : "#2a2a2a",
-                open ? COLORS.panelEdge : (live ? "#3f6146" : "#3a3a3a"),
+                ...hitColors(this, "title",
+                    live ? "#2a3a2c" : "#2a2a2a",
+                    open ? COLORS.panelEdge : (live ? "#3f6146" : "#3a3a3a"), !off),
             );
 
             let posX = margin;
@@ -124,7 +126,7 @@ function makeItemRow(node, item, idx) {
             // 오른쪽 끝: 설정 버튼
             const gearW = 16;
             const gearX = width - margin - inner - gearW;
-            ctx.fillStyle = open ? "#9bd" : "#999";
+            ctx.fillStyle = hitText(this, "gear", open ? "#9bd" : "#999", !off);
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
             ctx.fillText("⚙", gearX + gearW / 2, midY);
@@ -227,7 +229,8 @@ function makeButtonRow(node, name, buttons) {
 
             buttons.forEach((btn, i) => {
                 const x = margin + (each + gap) * i;
-                drawRoundedRect(ctx, x, posY, each, height, btn[1], btn[3] ?? null);
+                drawRoundedRect(ctx, x, posY, each, height,
+                    ...hitColors(this, i, btn[1], btn[3] ?? null));
                 this.bounds.push([x, each]);
                 ctx.fillStyle = LiteGraph.WIDGET_TEXT_COLOR ?? "#DDD";
                 ctx.fillText(fitText(ctx, btn[0], each - 8), x + each / 2, midY);
@@ -579,8 +582,9 @@ function makeHeaderRow(node) {
             const onCount = items.filter((i) => i.enabled).length;
 
             drawRoundedRect(ctx, margin, posY, width - margin * 2, height,
-                on ? "#2b3b4a" : "#2a2a2a",
-                on ? "#3f5a70" : "#3a3a3a");
+                ...hitColors(this, "toggle",
+                    on ? "#2b3b4a" : "#2a2a2a",
+                    on ? "#3f5a70" : "#3a3a3a"));
 
             let posX = margin;
             this.bounds.toggle = drawToggle(ctx, posX, posY, height, on);
@@ -600,8 +604,9 @@ function makeHeaderRow(node) {
                 const boxW = labelW + 8;
                 const boxX = rightEdge - boxW;
                 drawRoundedRect(ctx, boxX, posY + 4, boxW, height - 8,
-                    lorasOn ? "#2f4f34" : "#3a3a3a",
-                    lorasOn ? "#4a7a52" : "#4a4a4a");
+                    ...hitColors(this, "lora",
+                        lorasOn ? "#2f4f34" : "#3a3a3a",
+                        lorasOn ? "#4a7a52" : "#4a4a4a", on));
                 ctx.fillStyle = lorasOn ? "#cec" : "#888";
                 ctx.textAlign = "center";
                 ctx.fillText(label, boxX + boxW / 2, midY);

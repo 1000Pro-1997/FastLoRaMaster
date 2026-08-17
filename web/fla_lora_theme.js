@@ -1,6 +1,7 @@
 import { app } from "../../scripts/app.js";
 import { t } from "./fla_i18n.js";
 import { mouseGate, releaseWidgetCaptureSoon, dropCaptureFor, guardNodeWidgets } from "./fla_widget_mouse.js";
+import { hitColors } from "./fla_hit.js";
 // 로라 목록 UI 는 FLAChecklist 와 공용이다. 고치려면 fla_lora_ui.js 를 본다.
 import {
     ROW_HEIGHT, LAYOUT_PAD, api, findWidget, notify, pickFromList, drawRoundedRect,
@@ -398,8 +399,9 @@ app.registerExtension({
 
                     drawRoundedRect(
                         ctx, margin, posY, width - margin * 2, height,
-                        on ? "#2b3b4a" : "#2a2a2a",
-                        on ? "#3f5a70" : "#3a3a3a",
+                        ...hitColors(this, "name",
+                            on ? "#2b3b4a" : "#2a2a2a",
+                            on ? "#3f5a70" : "#3a3a3a"),
                     );
 
                     let posX = margin;
@@ -691,8 +693,9 @@ app.registerExtension({
                     // 왼쪽: 저장
                     const sx = margin;
                     drawRoundedRect(ctx, sx, posY, third, height,
-                        off ? "#2a2a2a" : (dirty ? BTN.save : "#2f2f2f"),
-                        off ? "#3a3a3a" : (dirty ? "#4a7a52" : "#3a3a3a"));
+                        ...hitColors(this, "save",
+                            off ? "#2a2a2a" : (dirty ? BTN.save : "#2f2f2f"),
+                            off ? "#3a3a3a" : (dirty ? "#4a7a52" : "#3a3a3a"), !off));
                     this.bounds.save = [sx, third];
                     // 디스크 모양은 항상 보여준다. 변경 여부는 버튼 색으로 알 수 있다.
                     ctx.fillStyle = off || !dirty ? "#666" : (LiteGraph.WIDGET_TEXT_COLOR ?? "#DDD");
@@ -701,8 +704,9 @@ app.registerExtension({
                     // 가운데: 최근 저장 상태로 되돌리기
                     const rx = sx + third + gap;
                     drawRoundedRect(ctx, rx, posY, third, height,
-                        off ? "#2a2a2a" : (dirty ? BTN.new : "#2f2f2f"),
-                        off ? "#3a3a3a" : (dirty ? "#7a5a3a" : "#3a3a3a"));
+                        ...hitColors(this, "revert",
+                            off ? "#2a2a2a" : (dirty ? BTN.new : "#2f2f2f"),
+                            off ? "#3a3a3a" : (dirty ? "#7a5a3a" : "#3a3a3a"), !off));
                     this.bounds.revert = [rx, third];
                     ctx.fillStyle = off || !dirty ? "#666" : (LiteGraph.WIDGET_TEXT_COLOR ?? "#DDD");
                     ctx.fillText("↶ " + t("revert"), rx + third / 2, midY);
@@ -710,8 +714,9 @@ app.registerExtension({
                     // 오른쪽: 옵션
                     const ox = rx + third + gap;
                     drawRoundedRect(ctx, ox, posY, third, height,
-                        off ? "#2a2a2a" : BTN.rename,
-                        off ? "#3a3a3a" : "#4a5a7a");
+                        ...hitColors(this, "opts",
+                            off ? "#2a2a2a" : BTN.rename,
+                            off ? "#3a3a3a" : "#4a5a7a", !off));
                     this.bounds.opts = [ox, third];
                     ctx.fillStyle = off ? "#666" : (LiteGraph.WIDGET_TEXT_COLOR ?? "#DDD");
                     ctx.fillText("⚙ " + t("options"), ox + third / 2, midY);

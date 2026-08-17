@@ -1,6 +1,7 @@
 import { app } from "../../scripts/app.js";
 import { t } from "./fla_i18n.js";
 import { mouseGate, releaseWidgetCapture, releaseWidgetCaptureSoon, guardNodeWidgets } from "./fla_widget_mouse.js";
+import { hitColors, hitText } from "./fla_hit.js";
 
 const NODE_NAME = "FLAResolution";
 const ROW_HEIGHT = 22;
@@ -367,10 +368,11 @@ app.registerExtension({
                     const rW = total - gW - gap;                   // 오른쪽 2/3
 
                     // 왼쪽: 그룹
-                    drawRoundedRect(ctx, margin, posY, gW, height, "#2f4258", "#456781");
+                    drawRoundedRect(ctx, margin, posY, gW, height,
+                        ...hitColors(this, "group", "#2f4258", "#456781"));
                     // 오른쪽: 해상도
                     drawRoundedRect(ctx, margin + gW + gap, posY, rW, height,
-                        "#2b3b4a", "#3f5a70");
+                        ...hitColors(this, "name", "#2b3b4a", "#3f5a70"));
 
                     ctx.save();
                     ctx.textBaseline = "middle";
@@ -588,8 +590,9 @@ app.registerExtension({
                     const live = isLinked();
 
                     drawRoundedRect(ctx, margin, posY, width - margin * 2, height,
-                        live ? "#2b3b4a" : "#2a2a2a",
-                        live ? "#3f5a70" : "#3a3a3a");
+                        ...hitColors(this, "name",
+                            live ? "#2b3b4a" : "#2a2a2a",
+                            live ? "#3f5a70" : "#3a3a3a", live));
 
                     ctx.save();
                     if (!live) ctx.globalAlpha = 0.45;
@@ -691,14 +694,14 @@ app.registerExtension({
                     const favW = 16;
                     const favX = margin + 6;
                     ctx.textAlign = "center";
-                    ctx.fillStyle = it.favorite ? "#ffd479" : "#666";
+                    ctx.fillStyle = hitText(this, "fav", it.favorite ? "#ffd479" : "#666");
                     ctx.fillText(it.favorite ? "★" : "☆", favX + favW / 2, midY);
                     this.bounds.fav = [favX, favW];
 
                     // 오른쪽 끝: 삭제
                     const delW = 14;
                     const delX = width - margin - inner - delW;
-                    ctx.fillStyle = "#a66";
+                    ctx.fillStyle = hitText(this, "del", "#a66");
                     ctx.fillText("✕", delX + delW / 2, midY);
                     this.bounds.del = [delX, delW];
 
@@ -834,7 +837,7 @@ app.registerExtension({
                     const margin = 10;
                     const width = node.size?.[0] ?? widgetWidth;
                     drawRoundedRect(ctx, margin, posY, width - margin * 2, height,
-                        "#3a3a2a", "#5a5a3a");
+                        ...hitColors(this, "add", "#3a3a2a", "#5a5a3a"));
                     ctx.save();
                     ctx.fillStyle = "#d5c98a";
                     ctx.textAlign = "center";
@@ -876,7 +879,7 @@ app.registerExtension({
                     const margin = 10;
                     const width = node.size?.[0] ?? widgetWidth;
                     drawRoundedRect(ctx, margin, posY, width - margin * 2, height,
-                        "#3a2a2a", "#5e3a3a");
+                        ...hitColors(this, "reset", "#3a2a2a", "#5e3a3a"));
                     ctx.save();
                     ctx.fillStyle = "#e0a0a0";
                     ctx.textAlign = "center";

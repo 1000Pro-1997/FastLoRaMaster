@@ -1,4 +1,5 @@
 import { app } from "../../scripts/app.js";
+import { markHit } from "./fla_hit.js";
 
 /** 커스텀 위젯 공통 마우스 처리.
  *
@@ -128,6 +129,9 @@ export function guardNodeWidgets(node) {
         if (!widget || widget.flaGuarded) continue;
         if (typeof widget.mouse !== "function") continue;
         guardMouse(widget);
+        // 직접 그리는 위젯은 호버·누름 표시 대상이기도 하다. bounds 를 들고
+        // 있는 것만 고른다 — 어느 칸 위에 있는지 가릴 기준이 그것뿐이다.
+        if (widget.bounds) markHit(widget);
         widget.flaGuarded = true;
     }
 }
