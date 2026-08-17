@@ -2,6 +2,11 @@ __pycache__/
 *.py[cod]
 presets/
 
+# Local agent instructions and working notes
+docs/
+AGENTS.md
+CLAUDE.md
+
 # Local secrets — never commit, never publish
 .env
 .env.*
