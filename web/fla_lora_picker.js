@@ -3,6 +3,8 @@ import { releaseWidgetCapture, releaseWidgetCaptureSoon } from "./fla_widget_mou
 
 // 검색을 미루는 시간(ms). 이만큼 입력이 없으면 그때 한 번 거른다.
 const SEARCH_DELAY = 300;
+// Civitai nsfwLevel 비트마스크에서 R 등급 이상만 성인 이미지로 가린다.
+const ADULT_LEVEL = 4;
 
 let libraryPromise;
 let settingsCache = null;
@@ -92,6 +94,10 @@ function contains(item, folder) {
 function modelBadge(base) {
     const match = String(base).match(/SDXL|SD\s*1(?:\.\d)?|SD\s*2(?:\.\d)?|Pony|Flux|Wan\s*\d(?:\.\d)?/i);
     return `LoRA${base ? ` | ${match ? match[0].replace(/\s/g, "") : base}` : ""}`;
+}
+
+function searchableBaseModel(base) {
+    return modelBadge(base).replace(/^LoRA\s*(?:\|\s*)?/, "");
 }
 
 function highlighted(element, text, query) {
@@ -429,9 +435,9 @@ export async function showLoraDetail(name, blurAdult = true, onPreviewChanged = 
             img.onerror = () => box.remove();
             frame.appendChild(img);
 
-            // 등급을 따지지 않고 토글이 켜져 있으면 전부 가린다.
+            // 상세 예시는 모델 전체가 아니라 각 이미지의 등급으로 판단한다.
             // 이미지는 이미 받아둔 뒤라 "보기" 를 누르면 바로 풀린다.
-            if (blurAdult) {
+            if (blurAdult && shot.nsfw_level >= ADULT_LEVEL) {
                 img.classList.add("fla-lp-blur");
                 const veil = document.createElement("div");
                 veil.className = "fla-lp-veil";
@@ -712,7 +718,13 @@ export async function pickLora() {
         function render() {
             const query = input.value.trim().toLocaleLowerCase();
             const scoped = items.filter((item) => includeChildren ? contains(item, folder) : item.folder === folder);
-            const shown = scoped.filter((item) => (!favoritesOnly || item.favorite) && (!query || `${item.name} ${item.title} ${item.version} ${item.base_model} ${(item.tags || []).join(" ")}`.toLocaleLowerCase().includes(query)));
+            // 검색 결과와 카드에서 강조되는 텍스트가 어긋나지 않도록
+            // 실제 카드에 보이는 제목, 버전, 모델 배지만 검색한다.
+            const shown = scoped.filter((item) => {
+                const cardText = `${item.title || ""} ${item.version || ""} ${searchableBaseModel(item.base_model)}`;
+                return (!favoritesOnly || item.favorite)
+                    && (!query || cardText.toLocaleLowerCase().includes(query));
+            });
             fav.classList.toggle("on", favoritesOnly); fav.textContent = `${favoritesOnly ? "★" : "☆"} ${t("loraFavorites")}`;
             renderSide(); renderPath(shown.length, scoped.length); grid.replaceChildren();
             if (!shown.length) { const empty = document.createElement("div"); empty.className = "fla-lp-empty"; empty.textContent = t("noLoras"); grid.appendChild(empty); return; }
