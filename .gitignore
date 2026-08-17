@@ -6,6 +6,7 @@ presets/
 docs/
 AGENTS.md
 CLAUDE.md
+CONTRIBUTING.md
 
 # Local secrets — never commit, never publish
 .env

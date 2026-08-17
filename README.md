@@ -225,14 +225,10 @@ Presets start empty — you build the library yourself.
 
 ---
 
-## Contributing
+## Feedback
 
-Read [CONTRIBUTING.md](CONTRIBUTING.md) first. In short:
-
-- **Update the docs in the same commit** as the code
-- **Write English in code**, translate in `locales/` and `web/fla_i18n.js`
-- Fill in all three languages (`en`, `ko`, `zh`) when adding a string
-- Always set `serialize = false` on widgets added from JavaScript
+Bug reports and feature requests are welcome on the
+[issue tracker](https://github.com/1000Pro-1997/SmartNode1000/issues).
 
 ---
 
