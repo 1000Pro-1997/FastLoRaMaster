@@ -1,6 +1,6 @@
 {
-  "FLALoraTheme": {
-    "display_name": "FLM 로라 테마",
+  "SN1000LoraTheme": {
+    "display_name": "SN1000 로라 테마",
     "description": "테마별 프리셋으로 로라를 적용하고 프롬프트를 조합합니다.",
     "inputs": {
       "theme": {
@@ -52,8 +52,8 @@
       }
     }
   },
-  "FLAChecklist": {
-    "display_name": "FLM 로라 체크리스트",
+  "SN1000Checklist": {
+    "display_name": "SN1000 로라 체크리스트",
     "description": "체크한 항목만 모아 프롬프트를 만들고 그 항목의 로라를 적용합니다.",
     "inputs": {
       "items_data": {
@@ -97,8 +97,8 @@
       }
     }
   },
-  "FLAResolution": {
-    "display_name": "FLM 해상도",
+  "SN1000Resolution": {
+    "display_name": "SN1000 해상도",
     "description": "해상도를 골라 가로/세로 정수로 내보냅니다.",
     "inputs": {
       "width": {

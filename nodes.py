@@ -2,12 +2,14 @@
 
 import json
 import os
+import random
 
 import folder_paths
 import comfy.sd
 import comfy.utils
 
 from . import presets
+from . import wildcards
 
 
 class FLALoraTheme:
@@ -48,6 +50,17 @@ class FLALoraTheme:
                     "default": True,
                     "tooltip": "Off skips every LoRA. Each LoRA keeps its own on/off state.",
                 }),
+                # 맨 뒤에 둬야 한다. 앞에 끼우면 기존 워크플로의
+                # widgets_values 인덱스가 밀려 값이 엉뚱한 칸에 들어간다.
+                "wildcard_seed": ("INT", {
+                    "default": 0,
+                    "min": 0,
+                    "max": 0xFFFFFFFFFFFFFFFF,
+                    # 이게 있어야 위젯에 randomize/increment 조절이 붙는다.
+                    # 없으면 시드가 늘 그대로라 같은 값만 뽑힌다.
+                    "control_after_generate": True,
+                    "tooltip": "Seed for picking wildcard values. The same seed gives the same result.",
+                }),
             },
             "optional": {
                 # 연결하지 않아도 동작한다. 프롬프트만 쓰고 싶을 때를 위해서다.
@@ -67,11 +80,11 @@ class FLALoraTheme:
     RETURN_TYPES = ("MODEL", "CLIP", "STRING")
     RETURN_NAMES = ("MODEL", "CLIP", "prompt")
     FUNCTION = "apply"
-    CATEGORY = "FLM"
+    CATEGORY = "SN1000"
     DESCRIPTION = "Applies LoRAs and composes prompts from theme presets."
 
     def apply(self, theme, preset, prompt, lora_data,
-              prompt_enabled=True, loras_enabled=True,
+              prompt_enabled=True, loras_enabled=True, wildcard_seed=0,
               model=None, clip=None, prompt_in=None):
         try:
             parsed = json.loads(lora_data) if lora_data.strip() else []
@@ -123,13 +136,20 @@ class FLALoraTheme:
             parts.append(entries["prompt"].strip())
         combined = ", ".join(p for p in parts if p)
 
+        # 와일드카드(__이름__, {a|b|c})를 실제 값으로 바꾼다.
+        # 앞 노드에서 온 글도 함께 처리해야 체인 어디에 써도 똑같이 풀린다.
+        missing = []
+        combined = wildcards.expand(combined, random.Random(wildcard_seed), missing)
+        if missing:
+            print(f"[FLM] Wildcard not found: {missing}")
+
         return (out_model, out_clip, combined)
 
 
 NODE_CLASS_MAPPINGS = {
-    "FLALoraTheme": FLALoraTheme,
+    "SN1000LoraTheme": FLALoraTheme,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "FLALoraTheme": "FLM Lora Theme",
+    "SN1000LoraTheme": "SN1000 Lora Theme",
 }

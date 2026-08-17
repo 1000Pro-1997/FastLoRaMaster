@@ -1,6 +1,6 @@
 {
-  "FLALoraTheme": {
-    "display_name": "FLM LoRA 主题",
+  "SN1000LoraTheme": {
+    "display_name": "SN1000 LoRA 主题",
     "description": "按主题预设应用 LoRA 并组合提示词。",
     "inputs": {
       "theme": {
@@ -52,8 +52,8 @@
       }
     }
   },
-  "FLAChecklist": {
-    "display_name": "FLM LoRA 清单",
+  "SN1000Checklist": {
+    "display_name": "SN1000 LoRA 清单",
     "description": "只把勾选的项目组合成提示词，并应用这些项目的 LoRA。",
     "inputs": {
       "items_data": {
@@ -97,8 +97,8 @@
       }
     }
   },
-  "FLAResolution": {
-    "display_name": "FLM 分辨率",
+  "SN1000Resolution": {
+    "display_name": "SN1000 分辨率",
     "description": "选择分辨率并输出宽高整数。",
     "inputs": {
       "width": {

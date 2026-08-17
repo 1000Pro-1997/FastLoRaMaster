@@ -3,6 +3,7 @@ import { ComfyWidgets } from "../../scripts/widgets.js";
 import { t } from "./fla_i18n.js";
 import { mouseGate, dropCaptureFor, guardNodeWidgets } from "./fla_widget_mouse.js";
 import { hitColors, hitText } from "./fla_hit.js";
+import { attachWildcardAutocomplete } from "./fla_wildcard_autocomplete.js";
 // 로라 목록 UI 는 FLALoraTheme 과 공용이다. 고치려면 fla_lora_ui.js 를 본다.
 import {
     ROW_HEIGHT, LAYOUT_PAD, findWidget, drawRoundedRect,
@@ -10,7 +11,7 @@ import {
     buildLoraBox,
 } from "./fla_lora_ui.js";
 
-const NODE_NAME = "FLAChecklist";
+const NODE_NAME = "SN1000Checklist";
 
 // ─────────── 그리기 헬퍼 ───────────
 
@@ -527,6 +528,13 @@ function itemPromptWidget(node, item, idx) {
             syncHidden(node);
         });
     }
+    // __ 를 치면 와일드카드 목록이 뜨게 한다
+    if (el) {
+        attachWildcardAutocomplete(el, (value) => {
+            item.prompt = value;
+            syncHidden(node);
+        });
+    }
     if (el) el.style.display = "";
     w.hidden = false;
     if (w.options) w.options.hidden = false;
@@ -722,6 +730,19 @@ function rebuild(node) {
             onAdd: (choice) => {
                 item.loras.push({ path: choice, strength: 0.9, enabled: true });
                 rebuildAfterPointer(node);
+            },
+            // 와일드카드는 펼쳐진 항목의 프롬프트 끝에 글자로 넣는다
+            onAddWildcard: (token) => {
+                const current = String(item.prompt ?? "").trim();
+                item.prompt = current ? `${current}, ${token}` : token;
+                const promptW = node.flaPromptWidgets?.[idx];
+                if (promptW) {
+                    promptW.value = item.prompt;
+                    const el = promptW.inputEl ?? promptW.element;
+                    if (el) el.value = item.prompt;
+                }
+                syncHidden(node);
+                node.setDirtyCanvas(true, true);
             },
             rowFlag: "flaRow",
             rowOpts: {

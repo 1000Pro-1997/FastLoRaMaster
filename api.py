@@ -586,3 +586,124 @@ async def post_resolutions_reset(request):
         "items": resolutions.items(),
         "groups": resolutions.load(),
     })
+
+
+@routes.get("/fla/wildcard-library")
+async def get_wildcard_library(request):
+    """ComfyUI 폴더 아래에서 찾은 와일드카드를 모두 준다.
+
+    refresh=1 이면 기억해둔 폴더 목록을 버리고 다시 찾는다.
+    와일드카드 폴더를 새로 만든 직후에 쓴다.
+    """
+    from . import wildcards
+    if request.query.get("refresh"):
+        wildcards.forget_roots()
+    return web.json_response({
+        "items": wildcards.library(),
+        "roots": wildcards.root_labels(),
+    })
+
+
+@routes.get("/fla/wildcard-preview")
+async def get_wildcard_preview(request):
+    """카드에 보여줄 앞부분 몇 줄."""
+    from . import wildcards
+    path = wildcards.resolve(request.query.get("name", ""))
+    if path is None:
+        return web.json_response({"ok": False, "error": "Wildcard not found"}, status=404)
+    return web.json_response({"ok": True, "lines": wildcards.preview_lines(path)})
+
+
+@routes.post("/fla/wildcard-favorite")
+async def post_wildcard_favorite(request):
+    from . import wildcards
+    try:
+        body = await request.json()
+    except Exception:
+        return web.json_response({"ok": False, "error": "Bad request"}, status=400)
+    name = body.get("name", "")
+    if wildcards.resolve(name) is None:
+        return web.json_response({"ok": False, "error": "Wildcard not found"}, status=404)
+    try:
+        favorite = wildcards.set_favorite(name, body.get("favorite") is True)
+    except OSError as e:
+        return web.json_response({"ok": False, "error": str(e)}, status=500)
+    return web.json_response({"ok": True, "favorite": favorite})
+
+
+@routes.get("/fla/wildcard-content")
+async def get_wildcard_content(request):
+    from . import wildcards
+    try:
+        item = wildcards.read_text(request.query.get("name", ""))
+    except OSError as e:
+        return web.json_response({"ok": False, "error": str(e)}, status=500)
+    if item is None:
+        return web.json_response({"ok": False, "error": "Wildcard not found"}, status=404)
+    return web.json_response({"ok": True, **item})
+
+
+@routes.post("/fla/wildcard-save")
+async def post_wildcard_save(request):
+    from . import wildcards
+    try:
+        body = await request.json()
+        name = wildcards.save_text(body.get("name"), body.get("content"), body.get("old_name"))
+    except (ValueError, FileExistsError, FileNotFoundError) as e:
+        return web.json_response({"ok": False, "error": str(e)}, status=400)
+    except OSError as e:
+        return web.json_response({"ok": False, "error": str(e)}, status=500)
+    return web.json_response({"ok": True, "name": name})
+
+
+@routes.post("/fla/wildcard-delete")
+async def post_wildcard_delete(request):
+    from . import wildcards
+    try:
+        body = await request.json()
+        wildcards.delete(body.get("name", ""))
+    except (ValueError, FileNotFoundError) as e:
+        return web.json_response({"ok": False, "error": str(e)}, status=400)
+    except OSError as e:
+        return web.json_response({"ok": False, "error": str(e)}, status=500)
+    return web.json_response({"ok": True})
+
+
+@routes.post("/fla/open-folder")
+async def post_open_folder(request):
+    """프리셋 폴더를 파일 탐색기로 연다.
+
+    테마를 주면 그 테마 폴더를, 없으면 presets 뿌리를 연다.
+    서버(ComfyUI 가 도는 PC)에서 열리므로 원격 접속 중이면 소용이 없다.
+    """
+    import subprocess
+    import sys
+
+    try:
+        body = await request.json()
+    except ValueError:
+        body = {}
+
+    theme = (body.get("theme") or "").strip()
+    presets.ensure_root()
+    target = presets.PRESET_ROOT
+    if theme and theme != presets.NONE:
+        # theme_dir 이 경로 탈출을 막아준다
+        found = presets.theme_dir(theme)
+        if found and os.path.isdir(found):
+            target = found
+
+    if not os.path.isdir(target):
+        return web.json_response(
+            {"ok": False, "error": "folder not found"}, status=404)
+
+    try:
+        if sys.platform == "win32":
+            os.startfile(target)  # noqa: S606
+        elif sys.platform == "darwin":
+            subprocess.Popen(["open", target])
+        else:
+            subprocess.Popen(["xdg-open", target])
+    except OSError as e:
+        return web.json_response({"ok": False, "error": str(e)}, status=500)
+    return web.json_response({"ok": True, "path": target})

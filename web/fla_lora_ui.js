@@ -9,6 +9,7 @@
 import { app } from "../../scripts/app.js";
 import { t } from "./fla_i18n.js";
 import { pickLora, makeLoraCardPreview } from "./fla_lora_picker.js";
+import { pickWildcard, wildcardToken } from "./fla_wildcard_picker.js";
 import { mouseGate, releaseWidgetCaptureSoon, guardMouse } from "./fla_widget_mouse.js";
 import { markHit, hitColors } from "./fla_hit.js";
 
@@ -541,6 +542,7 @@ export function handleLoraRowClick(node, lora, widget, pos, opts = {}) {
 export const BOX_COLORS = {
     header: "#2d4a5e",   // "로라 적용" 토글 줄
     action: "#4a3a2a",   // "＋ 로라 추가" 버튼
+    wildcard: "#2a3a4a", // "＋ 와일드카드 추가" 버튼
     edgeOn: "#3f6146",   // 켜졌을 때 테두리
     edgeOff: "#4a4a4a",  // 꺼졌을 때 테두리
     grey: "#2a2a2a",     // 꺼졌을 때 바탕
@@ -568,6 +570,8 @@ export function paint(widget, color) {
  *    onAdd      (path) => void. 로라를 고른 뒤
  *    rowFlag    위젯에 달 표식 이름 (rebuild 때 걷어내는 기준)
  *    rowOpts    각 로라 행에 넘길 추가 옵션 (margin 등)
+ *    onAddWildcard (token) => void. 와일드카드를 고른 뒤.
+ *               넘기지 않으면 와일드카드 버튼을 만들지 않는다.
  *    extra      맨 아래에 더 붙일 위젯들 (체크리스트의 "항목 삭제")
  *    tooltip    토글에 붙일 설명
  */
@@ -577,6 +581,7 @@ export function buildLoraBox(node, opts = {}) {
         enabled = () => true,
         setEnabled = () => { },
         onAdd = () => { },
+        onAddWildcard = null,
         rowFlag = "flaLoraRow",
         rowOpts = {},
         extra = [],
@@ -793,6 +798,59 @@ export function buildLoraBox(node, opts = {}) {
     };
     add[rowFlag] = true;
     made.push(guardMouse(markHit(add)));
+
+    // ④ "＋ 와일드카드 추가" — 로라 추가 바로 아래.
+    //    로라와 달리 노드에 무언가를 매다는 게 아니라 프롬프트에 글자를 넣는 것이라
+    //    "로라 적용" 토글이 꺼져 있어도 쓸 수 있어야 한다.
+    if (onAddWildcard) {
+        const openWildcards = async () => {
+            const choice = await pickWildcard();
+            if (!choice) return;
+            onAddWildcard(wildcardToken(choice), choice);
+        };
+
+        const live = !isNodeOff(node);
+        const addWc = {
+            type: "custom",
+            name: "fla_wildcard_add",
+            serialize: false,
+            bounds: { all: null },
+
+            computeSize() {
+                return [0, ROW_HEIGHT - LAYOUT_PAD];
+            },
+
+            draw(ctx, n, widgetWidth, posY, passedHeight) {
+                const height = rowHeight(passedHeight);
+                const width = widgetWidth;
+                drawRoundedRect(
+                    ctx, margin, posY, width - margin * 2, height,
+                    ...hitColors(this, "all",
+                        live ? BOX_COLORS.wildcard : BOX_COLORS.grey,
+                        live ? "#33556b" : "#3a3a3a", live),
+                );
+                ctx.save();
+                if (!live) ctx.globalAlpha = 0.45;
+                ctx.fillStyle = LiteGraph.WIDGET_TEXT_COLOR ?? "#DDD";
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                ctx.fillText(t("addWildcard"), width * 0.5, posY + height * 0.5);
+                ctx.restore();
+                this.bounds.all = [margin, width - margin * 2];
+            },
+
+            mouse(event, pos, n) {
+                const gate = mouseGate(event);
+                if (gate === "down") return;
+                if (gate !== "up") return false;
+                if (!inBounds(pos, this.bounds.all)) return false;
+                openWildcards();
+                return true;
+            },
+        };
+        addWc[rowFlag] = true;
+        made.push(guardMouse(markHit(addWc)));
+    }
 
     // 호출한 쪽이 더 붙이고 싶은 줄(체크리스트의 "항목 삭제")
     for (const w of extra) {

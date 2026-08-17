@@ -1,7 +1,7 @@
 [project]
 name = "fastloramaster"
-description = ""
-version = "1.0.2"
+description = "Pair prompts with their LoRAs. Theme presets shared as JSON, per-node checklists, wildcard autocomplete, and a resolution picker with ratio lock."
+version = "1.0.3"
 license = "MIT"
 
 # classifiers = [
@@ -30,6 +30,6 @@ Documentation = "https://github.com/1000Pro-1997/FastLoRaMaster/wiki"
 [tool.comfy]
 PublisherId = "pro1000"
 Repository = "https://github.com/1000Pro-1997/FastLoRaMaster"
-DisplayName = "FastLoRaMaster"
+DisplayName = "SmartNode1000"
 includes = []
 # "requires-comfyui" = ">=1.0.0"  # ComfyUI version compatibility

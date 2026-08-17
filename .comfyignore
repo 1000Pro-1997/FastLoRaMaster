@@ -2,3 +2,5 @@
 .env.*
 node.zip
 user_settings.json
+media/
+움짤/

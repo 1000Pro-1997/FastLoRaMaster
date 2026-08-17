@@ -2,6 +2,7 @@ import { app } from "../../scripts/app.js";
 import { t } from "./fla_i18n.js";
 import { mouseGate, releaseWidgetCaptureSoon, dropCaptureFor, guardNodeWidgets } from "./fla_widget_mouse.js";
 import { hitColors } from "./fla_hit.js";
+import { attachWildcardAutocomplete } from "./fla_wildcard_autocomplete.js";
 // 로라 목록 UI 는 FLAChecklist 와 공용이다. 고치려면 fla_lora_ui.js 를 본다.
 import {
     ROW_HEIGHT, LAYOUT_PAD, api, findWidget, notify, pickFromList, drawRoundedRect,
@@ -9,7 +10,7 @@ import {
     buildLoraBox, paint,
 } from "./fla_lora_ui.js";
 
-const NODE_NAME = "FLALoraTheme";
+const NODE_NAME = "SN1000LoraTheme";
 const NONE = "-";   // 언어와 무관한 표식. 파이썬 presets.NONE 과 같아야 한다.
 
 const getThemes = () => api("/fla/themes").then(r => r.themes);
@@ -271,6 +272,19 @@ function rebuildLoraWidgets(node) {
             rebuildAfterPointer(node);
             syncHidden(node);
         },
+        // 와일드카드는 노드에 매달지 않고 프롬프트 끝에 글자로 넣는다
+        onAddWildcard: (token) => {
+            const promptW = findWidget(node, "prompt");
+            if (!promptW) return;
+            const current = String(promptW.value ?? "").trim();
+            promptW.value = current ? `${current}, ${token}` : token;
+            promptW.callback?.(promptW.value);
+            // 여러 줄 위젯은 DOM 쪽 값도 같이 맞춰야 화면에 보인다
+            const el = promptW.inputEl ?? promptW.element;
+            if (el) el.value = promptW.value;
+            syncHidden(node);
+            node.setDirtyCanvas(true, true);
+        },
         rowFlag: "flaLoraRow",
         rowOpts: {
             margin: 10,
@@ -357,12 +371,20 @@ app.registerExtension({
                     updateSaveButton(node);
                 };
                 // 텍스트 영역은 콜백이 늦게 오므로 입력 이벤트도 함께 본다
+                const onEdit = () => updateSaveButton(node);
+                // __ 를 치면 와일드카드 목록이 뜨게 한다
+                const attach = () => {
+                    const el = promptW.inputEl ?? promptW.element;
+                    if (el) attachWildcardAutocomplete(el, onEdit);
+                };
+                attach();
+                setTimeout(attach, 300);
                 if (promptW.element) {
-                    promptW.element.addEventListener("input", () => updateSaveButton(node));
+                    promptW.element.addEventListener("input", onEdit);
                 } else {
                     // element 가 나중에 생기는 경우를 대비
                     setTimeout(() => {
-                        promptW.element?.addEventListener("input", () => updateSaveButton(node));
+                        promptW.element?.addEventListener("input", onEdit);
                     }, 300);
                 }
             }
@@ -676,12 +698,24 @@ app.registerExtension({
                 notify(t("chained"));
             };
 
+            // 지금 고른 테마 폴더를 파일 탐색기로 연다.
+            // ComfyUI 가 도는 PC 에서 열리므로 원격 접속 중이면 안내만 한다.
+            const actOpenFolder = async () => {
+                const theme = findWidget(node, "theme")?.value ?? "";
+                try {
+                    await post("/fla/open-folder", { theme });
+                } catch (e) {
+                    notify(t("openFolderFailed") + e.message, true);
+                }
+            };
+
             // 노드 추가 / 새로만들기 / 이름 바꾸기 / 삭제를 옵션 하나에 모은다.
             // 테마 이름 변경은 "이름 바꾸기"에서 테마/프리셋 형식으로 할 수 있어 따로 두지 않는다.
             const OPTS = [
                 ["➕ " + t("chainNode"), actChain],
                 ["✨ " + t("newPreset"), actNew],
                 ["✏ " + t("rename"), actRename],
+                ["📂 " + t("openFolder"), actOpenFolder],
                 ["🗑 " + t("remove"), actDelete],
             ];
 

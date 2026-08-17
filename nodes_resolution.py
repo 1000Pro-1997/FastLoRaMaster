@@ -65,7 +65,7 @@ class FLAResolution:
     RETURN_TYPES = ("INT", "INT", "STRING")
     RETURN_NAMES = ("width", "height", "info")
     FUNCTION = "pick"
-    CATEGORY = "FLM"
+    CATEGORY = "SN1000"
     DESCRIPTION = "Picks a resolution and outputs width/height as integers."
 
     def pick(self, width, height, preset, group, ratio, link_ratio, swap):
@@ -85,9 +85,9 @@ class FLAResolution:
 
 
 NODE_CLASS_MAPPINGS = {
-    "FLAResolution": FLAResolution,
+    "SN1000Resolution": FLAResolution,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "FLAResolution": "FLM Resolution",
+    "SN1000Resolution": "SN1000 Resolution",
 }

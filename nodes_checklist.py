@@ -1,12 +1,14 @@
 """FLA 체크리스트 노드."""
 
 import os
+import random
 
 import folder_paths
 import comfy.sd
 import comfy.utils
 
 from . import checklist
+from . import wildcards
 
 
 class FLAChecklist:
@@ -49,6 +51,15 @@ class FLAChecklist:
                     "multiline": True,
                     "tooltip": "Prompt of the item whose settings are open. Edited by the UI.",
                 }),
+                "wildcard_seed": ("INT", {
+                    "default": 0,
+                    "min": 0,
+                    "max": 0xFFFFFFFFFFFFFFFF,
+                    # 이게 있어야 위젯에 randomize/increment 조절이 붙는다.
+                    # 없으면 시드가 늘 그대로라 같은 값만 뽑힌다.
+                    "control_after_generate": True,
+                    "tooltip": "Seed for picking wildcard values. The same seed gives the same result.",
+                }),
             },
             "optional": {
                 # 연결하지 않아도 동작한다. 프롬프트만 쓰고 싶을 때를 위해서다.
@@ -68,11 +79,11 @@ class FLAChecklist:
     RETURN_TYPES = ("MODEL", "CLIP", "STRING")
     RETURN_NAMES = ("MODEL", "CLIP", "prompt")
     FUNCTION = "apply"
-    CATEGORY = "FLM"
+    CATEGORY = "SN1000"
     DESCRIPTION = "Builds a prompt from the checked items and applies their LoRAs."
 
     def apply(self, items_data, prompt="", delimiter=", ",
-              prompt_enabled=True, loras_enabled=True,
+              prompt_enabled=True, loras_enabled=True, wildcard_seed=0,
               model=None, clip=None, prompt_in=None):
         # prompt 는 UI 편집칸일 뿐이다. 실제 내용은 items_data 안에 들어 있다.
         items = checklist.parse(items_data)
@@ -116,13 +127,19 @@ class FLAChecklist:
         else:
             combined = prompt_in.strip() if isinstance(prompt_in, str) else ""
 
+        # 와일드카드(__이름__, {a|b|c})를 실제 값으로 바꾼다.
+        missing = []
+        combined = wildcards.expand(combined, random.Random(wildcard_seed), missing)
+        if missing:
+            print(f"[FLM] Wildcard not found: {missing}")
+
         return (out_model, out_clip, combined)
 
 
 NODE_CLASS_MAPPINGS = {
-    "FLAChecklist": FLAChecklist,
+    "SN1000Checklist": FLAChecklist,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "FLAChecklist": "FLM Lora Checklist",
+    "SN1000Checklist": "SN1000 Lora Checklist",
 }

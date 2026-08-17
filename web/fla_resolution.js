@@ -3,7 +3,7 @@ import { t } from "./fla_i18n.js";
 import { mouseGate, releaseWidgetCapture, releaseWidgetCaptureSoon, guardNodeWidgets } from "./fla_widget_mouse.js";
 import { hitColors, hitText } from "./fla_hit.js";
 
-const NODE_NAME = "FLAResolution";
+const NODE_NAME = "SN1000Resolution";
 const ROW_HEIGHT = 22;
 const FAV_GROUP = () => t("favorites");
 

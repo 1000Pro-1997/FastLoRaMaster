@@ -3,7 +3,7 @@
     {
       "w": 1024,
       "h": 1024,
-      "favorite": false
+      "favorite": true
     },
     {
       "w": 1152,
@@ -13,7 +13,7 @@
     {
       "w": 1216,
       "h": 832,
-      "favorite": false
+      "favorite": true
     },
     {
       "w": 1344,
@@ -67,7 +67,7 @@
     {
       "w": 832,
       "h": 480,
-      "favorite": false
+      "favorite": true
     },
     {
       "w": 1280,
@@ -114,13 +114,6 @@
     {
       "w": 2048,
       "h": 2048,
-      "favorite": false
-    }
-  ],
-  "이미지": [
-    {
-      "w": 1024,
-      "h": 1536,
       "favorite": false
     }
   ]

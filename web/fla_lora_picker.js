@@ -49,7 +49,8 @@ async function saveFavorite(item, favorite) {
     item.favorite = (await res.json()).favorite;
 }
 
-function addStyles() {
+/** 창 골격(.fla-lp-*) 스타일. 와일드카드 창도 같은 뼈대를 쓰므로 내보낸다. */
+export function addStyles() {
     if (document.getElementById("fla-lora-picker-style")) return;
     const style = document.createElement("style");
     style.id = "fla-lora-picker-style";
