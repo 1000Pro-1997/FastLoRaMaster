@@ -22,14 +22,14 @@ license = "MIT"
 # ]
 
 [project.urls]
-Repository = "https://github.com/1000Pro-1997/FastLoRaMaster"
+Repository = "https://github.com/1000Pro-1997/SmartNode1000"
 #  Used by Comfy Registry https://registry.comfy.org
-Documentation = "https://github.com/1000Pro-1997/FastLoRaMaster/wiki"
-"Bug Tracker" = "https://github.com/1000Pro-1997/FastLoRaMaster/issues"
+Documentation = "https://github.com/1000Pro-1997/SmartNode1000/wiki"
+"Bug Tracker" = "https://github.com/1000Pro-1997/SmartNode1000/issues"
 
 [tool.comfy]
 PublisherId = "pro1000"
-Repository = "https://github.com/1000Pro-1997/FastLoRaMaster"
+Repository = "https://github.com/1000Pro-1997/SmartNode1000"
 DisplayName = "SmartNode1000"
 includes = []
 # "requires-comfyui" = ">=1.0.0"  # ComfyUI version compatibility

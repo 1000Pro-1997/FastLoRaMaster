@@ -178,7 +178,7 @@ Search for **SmartNode1000** in ComfyUI Manager and install.
 
 ```bash
 cd ComfyUI/custom_nodes
-git clone https://github.com/1000Pro-1997/FastLoRaMaster.git
+git clone https://github.com/1000Pro-1997/SmartNode1000.git
 ```
 
 Restart ComfyUI. **No extra dependencies** — nothing to `pip install`.
