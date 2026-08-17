@@ -63,6 +63,23 @@ function markClean(node) {
     updateSaveButton(node);
 }
 
+/** 주어진 프리셋 데이터를 "저장된 상태"의 기준으로 삼는다.
+ *  화면 상태는 건드리지 않는다. 디스크 원본과 현재 상태가 다르면
+ *  저장 버튼과 되돌리기가 살아난다. */
+function markBaseline(node, data) {
+    const base = {
+        prompt: data.prompt ?? "",
+        loras: (data.loras ?? []).map(l => ({
+            path: l.path,
+            strength: typeof l.strength === "number" ? l.strength : 1.0,
+            enabled: l.enabled !== false,
+        })),
+    };
+    node.flaSavedData = base;
+    node.flaSavedKey = JSON.stringify(base);
+    updateSaveButton(node);
+}
+
 /** 저장 상태가 바뀌었으면 버튼 줄을 다시 그리게 한다.
  *  실제 표시(버튼 색)는 버튼 줄의 draw 가 매번 계산한다. */
 function updateSaveButton(node) {
@@ -360,7 +377,7 @@ app.registerExtension({
                     applyData(node, data);
                     rebuildLoraWidgets(node);
                     // 막 불러온 상태가 곧 저장된 상태다
-                    markClean(node);
+                    markBaseline(node, data);
                 } catch (e) {
                     notify(t("loadFailed") + e.message, true);
                 }
@@ -830,7 +847,21 @@ app.registerExtension({
                 node.flaNeededHeight = node.computeSize?.()?.[1] ?? saved[1];
             }
             syncHidden(node);
+
+            // 워크플로에 담겨 온 상태는 프리셋 파일과 다를 수 있다.
+            // (저장 버튼을 누르지 않고 워크플로만 저장한 경우)
+            // 그러므로 복원된 상태를 그대로 "저장됨"으로 보지 않고,
+            // 디스크의 프리셋을 읽어 그것을 기준으로 삼는다.
+            // 파일을 못 읽으면 되돌릴 원본이 없으므로 현재 상태를 기준으로 둔다.
             markClean(node);
+            if (node.flaPreset) {
+                const themeName = findWidget(node, "theme")?.value;
+                if (themeName && themeName !== NONE) {
+                    getPreset(themeName, node.flaPreset)
+                        .then(data => markBaseline(node, data))
+                        .catch(() => { });
+                }
+            }
         };
     },
 });
