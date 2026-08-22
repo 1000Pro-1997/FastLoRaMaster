@@ -102,6 +102,11 @@ The **Find models** tab searches Civitai from inside the picker — sort, period
 model and an 18+ filter, with previews on the cards and a **Have it** badge on anything
 already in your library (matched by hash, so a renamed copy still counts).
 
+Picking a card opens the model the way its Civitai page reads: every version as a chip
+you can flip between, an image viewer you page through, a Download button with the file
+size on it, a details table (downloads, rating, published date, base model, trigger
+words, hash, AIR — hash and AIR copy on click) and the full description.
+
 Pick a version and press Download. SmartNode1000 streams it to disk with a progress bar,
 checks the SHA256 against what Civitai published, and writes the metadata and preview
 image next to it — so a downloaded LoRA shows up complete, with trigger words and

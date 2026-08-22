@@ -496,6 +496,8 @@ async def post_civitai_cancel(request):
 SEARCH_LIMIT = 24
 # 카드 하나에 보여줄 예시 이미지 수
 SEARCH_IMAGES = 6
+# 상세 창 이미지 넘김판에 담을 수
+DETAIL_IMAGES = 20
 # 이미 가진 로라 목록을 다시 훑는 간격(초)
 INSTALLED_TTL = 10.0
 
@@ -543,10 +545,30 @@ def _primary_file(version):
     return next((f for f in files if f.get("primary")), files[0])
 
 
-def _trim_version(version, hashes, names, model=None, folders=None):
+def _review_label(up, down):
+    """Civitai 가 별점 대신 쓰는 말. 엄지 비율로 정한다."""
+    total = (up or 0) + (down or 0)
+    if not total:
+        return "", 0
+    ratio = (up or 0) / total
+    if ratio >= 0.9:
+        name = "veryPositive"
+    elif ratio >= 0.75:
+        name = "positive"
+    elif ratio >= 0.4:
+        name = "mixed"
+    else:
+        name = "negative"
+    return name, total
+
+
+def _trim_version(version, hashes, names, model=None, folders=None, max_images=SEARCH_IMAGES):
     primary = _primary_file(version) or {}
     sha = ((primary.get("hashes") or {}).get("SHA256") or "").lower()
     file_name = primary.get("name") or ""
+    stats = version.get("stats") or {}
+    review, reviews = _review_label(stats.get("thumbsUpCount"), stats.get("thumbsDownCount"))
+    model_id = version.get("modelId") or (model or {}).get("id")
     return {
         "id": version.get("id"),
         "name": version.get("name") or "",
@@ -560,14 +582,22 @@ def _trim_version(version, hashes, names, model=None, folders=None):
         "trained_words": version.get("trainedWords") or [],
         # 어느 폴더에 둘지 미리 골라둔다(화면에서 바꿀 수 있다)
         "folder": suggest_folder(model or {}, version, folders) if folders is not None else "",
-        "images": [_trim_image(i) for i in (version.get("images") or [])[:SEARCH_IMAGES]
+        "downloads": stats.get("downloadCount"),
+        "review": review,
+        "reviews": reviews,
+        # Civitai 가 모델을 가리키는 이름표. 화면에서 복사할 수 있게 넘긴다.
+        "air": f"civitai:{model_id}@{version.get('id')}" if model_id else "",
+        # 공개 API 는 아직 이 값을 안 주는 일이 많다. 있을 때만 표에 넣는다.
+        "clip_skip": version.get("clipSkip"),
+        "images": [_trim_image(i) for i in (version.get("images") or [])[:max_images]
                    if isinstance(i.get("url"), str)],
     }
 
 
-def _trim_model(model, hashes, names, folders=None):
+def _trim_model(model, hashes, names, folders=None, full=False):
     stats = model.get("stats") or {}
-    versions = [_trim_version(v, hashes, names, model, folders)
+    versions = [_trim_version(v, hashes, names, model, folders,
+                              DETAIL_IMAGES if full else SEARCH_IMAGES)
                 for v in (model.get("modelVersions") or [])]
     return {
         "id": model.get("id"),
@@ -579,6 +609,8 @@ def _trim_model(model, hashes, names, folders=None):
         "creator": (model.get("creator") or {}).get("username") or "",
         "downloads": stats.get("downloadCount"),
         "likes": stats.get("thumbsUpCount"),
+        # 설명은 길다(수 KB). 목록에는 싣지 않고 상세를 열 때만 준다.
+        "description": (model.get("description") or "") if full else "",
         "versions": versions,
         # 어느 버전이든 하나라도 있으면 카드에 표시한다
         "installed": any(v["installed"] for v in versions),
@@ -617,6 +649,31 @@ async def get_civitai_search(request):
         "ok": True,
         "items": items,
         "next_cursor": (data.get("metadata") or {}).get("nextCursor") or "",
+    })
+
+
+@routes.get("/fla/civitai/model")
+async def get_civitai_model(request):
+    """모델 하나를 자세히. 카드를 고르면 부른다.
+
+    설명과 예시 이미지는 목록에 싣기에 너무 크다. 열어본 것만 받아온다.
+    """
+    try:
+        model_id = int(request.query.get("id", ""))
+    except (TypeError, ValueError):
+        return web.json_response({"ok": False, "error": "Bad id"}, status=400)
+
+    try:
+        model = await fetch_model(model_id, _api_key())
+    except NotFound as e:
+        return web.json_response({"ok": False, "error": str(e)}, status=404)
+    except CivitaiError as e:
+        return web.json_response({"ok": False, "error": str(e)}, status=502)
+
+    hashes, names = _installed_index()
+    return web.json_response({
+        "ok": True,
+        "model": _trim_model(model, hashes, names, library_folders(), full=True),
     })
 
 

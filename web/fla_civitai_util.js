@@ -93,17 +93,54 @@ export function addCivitaiStyles() {
       .fla-cv-veil button{padding:5px 13px;color:#fff;background:#1971c2;border:0;border-radius:6px;font-size:12px;cursor:pointer}
       .fla-cv-more{grid-column:1/-1;display:grid;place-items:center;padding:6px 0 14px}
       .fla-cv-empty{grid-column:1/-1;padding:60px;text-align:center;color:#89919d}
-      .fla-cv-detail{width:340px;flex:none;padding:14px;overflow-y:auto;background:#1d2026;border-left:1px solid #383e48}
-      .fla-cv-detail h3{margin:0 0 4px;color:#fff;font-size:15px;overflow-wrap:anywhere}
+      .fla-cv-detail{width:440px;flex:none;padding:14px;overflow-y:auto;background:#1d2026;border-left:1px solid #383e48}
+      .fla-cv-detail h3{margin:0 0 4px;color:#fff;font-size:16px;overflow-wrap:anywhere}
       .fla-cv-detail .by{margin-bottom:12px;color:#98a1ad;font-size:12px}
       .fla-cv-field{margin-bottom:11px}.fla-cv-field label{display:block;margin-bottom:4px;color:#8d95a1;font-size:11px;text-transform:uppercase;letter-spacing:.4px}
       .fla-cv-field select,.fla-cv-field input{width:100%;height:32px;padding:0 8px;color:#eee;background:#111419;border:1px solid #454c58;border-radius:6px;box-sizing:border-box}
-      .fla-cv-meta{margin:10px 0;color:#98a1ad;font-size:12px;line-height:1.7}.fla-cv-meta b{color:#dde2e8;font-weight:600}
       .fla-cv-tags{display:flex;flex-wrap:wrap;gap:4px;margin:8px 0}
       .fla-cv-tag{padding:2px 8px;color:#cfd6de;background:#2b3138;border:1px solid #3d444e;border-radius:20px;font-size:11px}
-      .fla-cv-gallery{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:10px}
-      .fla-cv-gallery div{position:relative;overflow:hidden;border-radius:6px;background:#111318}
-      .fla-cv-gallery img{display:block;width:100%;height:auto}
+      .fla-cv-loading{padding:40px;text-align:center;color:#89919d;font-size:12px}
+
+      .fla-cv-versions{display:flex;gap:5px;margin:2px 0 12px;padding-bottom:5px;overflow-x:auto;scrollbar-width:thin}
+      .fla-cv-versions::-webkit-scrollbar{height:6px}.fla-cv-versions::-webkit-scrollbar-thumb{background:#3f4650;border-radius:3px}
+      .fla-cv-version{flex:none;padding:6px 11px;color:#c8cdd5;background:#2b3138;border:1px solid #3d444e;border-radius:6px;font-size:12px;font-weight:700;white-space:nowrap;cursor:pointer}
+      .fla-cv-version:hover{background:#3a424e}
+      .fla-cv-version.on{color:#fff;background:#1971c2;border-color:#1971c2}
+      .fla-cv-version .have{margin-left:5px;color:#7bd88f;font-weight:400}
+      .fla-cv-version.on .have{color:#d3f9d8}
+
+      .fla-cv-viewer{position:relative;margin-bottom:11px;overflow:hidden;background:#111318;border:1px solid #3b424d;border-radius:9px}
+      .fla-cv-viewer .frame{position:relative;display:grid;width:100%;height:300px;place-items:center;color:#59616d}
+      .fla-cv-viewer img,.fla-cv-viewer video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#0b0d11}
+      .fla-cv-arrow{position:absolute;z-index:3;top:50%;width:34px;height:52px;padding:0;transform:translateY(-50%);color:#fff;background:#000a;border:1px solid #ffffff22;border-radius:7px;font-size:19px;cursor:pointer}
+      .fla-cv-arrow:hover{background:#1971c2;border-color:#4dabf7}
+      .fla-cv-arrow.prev{left:7px}.fla-cv-arrow.next{right:7px}
+      .fla-cv-counter{position:absolute;z-index:3;right:8px;bottom:8px;padding:3px 8px;color:#fff;background:#000b;border-radius:5px;font-size:11px;font-variant-numeric:tabular-nums}
+      .fla-cv-dots{display:flex;justify-content:center;gap:4px;margin:-4px 0 11px}
+      .fla-cv-dots span{width:6px;height:6px;background:#3f4650;border-radius:50%}
+      .fla-cv-dots span.on{background:#4dabf7}
+
+      .fla-cv-get{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;height:42px;margin-bottom:6px;color:#fff;background:#1971c2;border:1px solid #1c7ed6;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer}
+      .fla-cv-get:hover:not(:disabled){background:#1c7ed6}
+      .fla-cv-get:disabled{opacity:.5;cursor:default}
+      .fla-cv-get.owned{color:#d3f9d8;background:#245c33;border-color:#2f7d45}
+
+      .fla-cv-panel{margin-top:14px;overflow:hidden;background:#1b1f26;border:1px solid #333a45;border-radius:9px}
+      .fla-cv-panelhead{display:flex;align-items:center;padding:9px 12px;background:#22262d;border-bottom:1px solid #333a45;color:#fff;font-size:13px;font-weight:700}
+      .fla-cv-panelhead span{flex:1}
+      .fla-cv-table{display:grid;grid-template-columns:max-content 1fr}
+      .fla-cv-table>div{padding:8px 12px;border-top:1px solid #262b33;font-size:12px;overflow-wrap:anywhere}
+      .fla-cv-table>div:nth-child(-n+2){border-top:0}
+      .fla-cv-table>div:nth-child(odd){color:#8d95a1;white-space:nowrap}
+      .fla-cv-table>div:nth-child(even){color:#dde2e8;text-align:right}
+      .fla-cv-pill{display:inline-block;padding:2px 8px;background:#2b3138;border:1px solid #3d444e;border-radius:5px;font-size:11px;font-weight:700;letter-spacing:.3px}
+      .fla-cv-copy{display:inline-flex;align-items:center;gap:6px;max-width:100%;padding:2px 8px;color:#dde2e8;background:#111419;border:1px solid #3a414c;border-radius:5px;font-family:monospace;font-size:11px;cursor:pointer}
+      .fla-cv-copy:hover{border-color:#4dabf7}
+      .fla-cv-copy span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+      .fla-cv-good{color:#7bd88f}.fla-cv-mid{color:#ffd34e}.fla-cv-bad{color:#e08a7d}
+      .fla-cv-desc{padding:12px;color:#c8cdd5;font-size:12px;line-height:1.7;overflow-wrap:anywhere}
+      .fla-cv-desc p{margin:0 0 9px}.fla-cv-desc p:last-child{margin:0}
       .fla-cv-dlbar{display:flex;align-items:center;gap:12px;padding:10px 14px;background:#1d2026;border-top:1px solid #383e48}
       .fla-cv-dlbar .who{flex:1;min-width:0;color:#c8cdd5;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
       .fla-cv-dlbar .fla-cv-bar{flex:1;margin:0}
@@ -140,4 +177,47 @@ export function prettySize(bytes) {
     let i = 0;
     while (value >= 1024 && i < units.length - 1) { value /= 1024; i++; }
     return `${value.toFixed(i ? 1 : 0)} ${units[i]}`;
+}
+
+/** Civitai 가 준 설명은 HTML 이다. 태그를 그대로 넣으면 스크립트가 딸려올 수
+ *  있으므로 글자만 뽑아 문단으로 다시 만든다. */
+export function renderDescription(host, html, emptyText) {
+    host.replaceChildren();
+    if (!html) {
+        if (emptyText) host.appendChild(el("div", "fla-cv-loading", emptyText));
+        return;
+    }
+    const text = String(html)
+        .replace(/<\s*br\s*\/?\s*>/gi, "\n")
+        .replace(/<\s*\/\s*(p|div|li|h\d)\s*>/gi, "\n\n")
+        .replace(/<[^>]*>/g, "")
+        .replace(/&nbsp;/g, " ")
+        .replace(/&amp;/g, "&")
+        .replace(/&lt;/g, "<")
+        .replace(/&gt;/g, ">")
+        .replace(/&quot;/g, "\"")
+        .replace(/&#39;/g, "'");
+    for (const para of text.split(/\n{2,}/)) {
+        const trimmed = para.trim();
+        if (!trimmed) continue;
+        host.appendChild(el("p", null, trimmed));
+    }
+    if (!host.children.length && emptyText) {
+        host.appendChild(el("div", "fla-cv-loading", emptyText));
+    }
+}
+
+/** 눌러서 복사되는 값. 해시와 AIR 에 쓴다. */
+export function copyValue(text, short = null) {
+    const node = el("button", "fla-cv-copy");
+    node.append(el("span", null, short ?? text), document.createTextNode("⧉"));
+    node.title = text;
+    node.onclick = async () => {
+        try { await navigator.clipboard.writeText(text); } catch (e) { return; }
+        const label = node.querySelector("span");
+        const old = label.textContent;
+        label.textContent = "copied";
+        setTimeout(() => { label.textContent = old; }, 900);
+    };
+    return node;
 }
