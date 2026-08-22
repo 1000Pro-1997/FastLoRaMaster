@@ -40,7 +40,11 @@ def _write_settings(data):
 
 @routes.get("/fla/settings")
 async def get_settings(request):
-    return web.json_response({"settings": _read_settings()})
+    # Civitai API 키는 화면에 내려보내지 않는다. 있는지 여부만 알려주면 된다
+    # (/fla/civitai/status 의 has_key). 부분 갱신이라 여기서 빼도 지워지지 않는다.
+    settings = _read_settings()
+    settings.pop("civitai_api_key", None)
+    return web.json_response({"settings": settings})
 
 
 @routes.post("/fla/settings")
@@ -173,6 +177,8 @@ def _lora_info(name):
         "tags": metadata.get("tags") or (civitai.get("model") or {}).get("tags") or [],
         "favorite": metadata.get("favorite") is True,
         "adult": _is_adult(metadata),
+        # Civitai 정보가 아직 없는 카드를 표시하려고 쓴다
+        "has_info": bool(civitai),
         "size": metadata.get("size") or os.path.getsize(full),
         "preview": preview,
         "preview_type": "video" if preview_path and os.path.splitext(preview_path)[1].lower() in (".mp4", ".webm") else "image",

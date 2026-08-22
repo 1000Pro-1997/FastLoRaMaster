@@ -68,13 +68,31 @@ Save it into the preset and it comes back that way every time.
 > **Where do the previews come from?**
 > SmartNode1000 reads the standard sidecar files that sit next to your LoRA —
 > `<lora>.preview.png` (also `.jpg`, `.jpeg`, `.webp`, `.mp4`, `.webm`) and the
-> `<lora>.json` metadata file.
+> `<lora>.metadata.json` file.
 >
-> If your LoRAs have no previews yet, use a dedicated LoRA manager such as
-> [ComfyUI-Lora-Manager](https://github.com/willmiao/ComfyUI-Lora-Manager) to download
-> the images, trigger words and metadata from Civitai in bulk. SmartNode1000 picks them
-> up automatically — same files, no extra setup. You can also drop an image onto a LoRA
-> here to set its preview by hand.
+> No sidecar files yet? Press **Civitai** in the LoRA picker and SmartNode1000 fetches
+> them for you — see below. You can also drop an image onto a LoRA here to set its
+> preview by hand.
+
+---
+
+### Fetch names, trigger words and previews from Civitai
+
+Press **Civitai** in the LoRA picker. SmartNode1000 identifies each file by its SHA256
+hash — not by its name — so renamed and re-foldered LoRAs still match, and fills in the
+title, version, base model, trigger words, tags, description, sample images and a
+preview image.
+
+Do one LoRA at a time from its detail window, or fill the whole library in one pass with
+a progress bar you can stop at any point. Files that are not on Civitai are marked so
+the next run skips them.
+
+Anything you set by hand is left alone: favourites, notes, and a preview image you
+picked yourself are never overwritten unless you tick the box that says so.
+
+An API key is optional — most models resolve without one. If you want it, the panel
+walks you through creating a **read-only** key, and stores it in `user_settings.json`
+on your machine only.
 
 ---
 
@@ -183,13 +201,12 @@ git clone https://github.com/1000Pro-1997/SmartNode1000.git
 
 Restart ComfyUI. **No extra dependencies** — nothing to `pip install`.
 
-### Recommended companion
+### Plays well with other LoRA managers
 
-SmartNode1000 shows LoRA preview images from the standard sidecar files. To fetch those
-previews, trigger words and metadata for your whole library at once, install a LoRA
-manager such as [ComfyUI-Lora-Manager](https://github.com/willmiao/ComfyUI-Lora-Manager).
-It is entirely optional — SmartNode1000 works without it, you just won't see preview
-images until the files exist.
+SmartNode1000 reads and writes the same sidecar files that
+[ComfyUI-Lora-Manager](https://github.com/willmiao/ComfyUI-Lora-Manager) and similar
+tools use, so metadata fetched by either side shows up in both. Running one is entirely
+optional.
 
 ---
 
@@ -215,6 +232,8 @@ testing a single change quick.
 | Theme presets | `presets/<theme>/<name>.json` | ✅ Yes |
 | Resolution list | `resolutions.json` | ✅ Yes |
 | Wildcard favourites | `wildcard_favorites.json` | ✅ Yes |
+| LoRA info from Civitai | `<lora>.metadata.json`, `<lora>.preview.*` | ✅ Yes |
+| Civitai API key | `user_settings.json` (never committed) | ✅ Yes |
 | Checklist items | the workflow file | ❌ No |
 | Selected values | the workflow file | ❌ No |
 
