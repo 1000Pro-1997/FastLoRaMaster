@@ -96,6 +96,78 @@ on your machine only.
 
 ---
 
+### Every version of a model, in one list
+
+Open a LoRA's detail window and switch to the **Version** tab. The top half is the file
+you actually have — version, base model, file name, size, publish date, creator,
+downloads, likes and the SHA256 it was matched by, with **Open on Civitai** next to it.
+
+Below that, **All versions of this model** lists every release on that Civitai page, and
+each row says where you stand:
+
+- **This file** — the one you opened
+- **In your library** — a version you already have somewhere else, with its path printed
+  under the name, so a copy in `Wan2.2/high` and a copy in `Wan2.2/SVI/LOW` are told
+  apart at a glance
+- **Latest** — the newest release on the page
+
+Rows you already own get a **Delete** button — the file, its preview and its metadata go
+together, and it asks first. Rows you don't get a **Download** button with the file size
+on it.
+
+Click any row and the model unfolds beside it in the same panel the **Find models** tab
+uses: every version as a chip with a ✓ on the ones you have, the image viewer, the
+details table and the description — ready to download from there.
+
+![All versions of a model](https://raw.githubusercontent.com/1000Pro-1997/SmartNode1000/main/media/13-model-versions.png)
+
+---
+
+### See which LoRAs have a newer version
+
+The **My LoRAs** tab is split in two: the controls on the left, the results on the
+right. Press **Check for updates** and SmartNode1000 walks the LoRAs it has Civitai
+info for and looks for a newer release — first the other versions on the same model
+page, then (optionally) the same creator's other pages, which is where a "v2" usually
+gets posted as a separate model.
+
+What counts as an update is deliberately narrow: the letters of the name have to match
+and only the number may go up — `Neon City v1` → `Neon City v2`, `1.0` → `1.5`.
+**High/Low noise pairs are not updates.** Wan2.2-style models ship as `HighNoise` and
+`LowNoise` (sometimes just `H` and `L`) halves of the same version, and the same goes
+for `t2v` / `i2v`, so those are matched to their own half and never listed as an upgrade
+of each other.
+
+The left column tells you what it is about to do before you press anything: how many
+LoRAs can be checked at all, how many are still without Civitai info, and when the last
+check ran.
+
+Every hit shows the old version next to the new one, what changed (version number, base
+model, publish date, file size, download count), and a **Quick download** button.
+**Download all** queues every hit at once, and the count next to it is how many are
+waiting. A false positive can be marked **Not an update** and it stays hidden from then
+on; **Clear list** empties the results.
+
+**You never have to pick a folder for an update.** A quick download is saved next to the
+file it replaces — the row says so — with its metadata and preview image written
+alongside, so the new version lands in the same place your workflow already looks.
+
+![Checking for updates](https://raw.githubusercontent.com/1000Pro-1997/SmartNode1000/main/media/14-update-check.png)
+
+Next to it sits **Older copies** — the same idea pointed inwards. It compares the LoRAs
+you already have against each other and lists the ones a newer file you also have has
+already replaced, biggest first, with the space you would get back. Nothing is sent to
+Civitai, so it answers the moment you press it. Each row shows what replaced it and
+where that file lives; **Delete file** removes the LoRA with its preview and metadata,
+**Keep this one** takes it off the list for good, and **Delete all** clears the whole
+list at once. Both ask first — deleting cannot be undone.
+
+Click a result box itself and the model opens on the right in the full detail panel —
+version chips, image viewer, details table, description — so you can read what actually
+changed before you take it.
+
+---
+
 ### Find and download models without leaving ComfyUI
 
 The **Find models** tab searches Civitai from inside the picker — sort, period, base
@@ -112,12 +184,20 @@ checks the SHA256 against what Civitai published, and writes the metadata and pr
 image next to it — so a downloaded LoRA shows up complete, with trigger words and
 samples, the moment it lands.
 
-It also picks the folder for you. Tags and base model are matched against the folders
-you already use — a character LoRA goes to `Characters`, a Wan LoRA to `Wan2.2`, and so
-on — and the suggestion is a dropdown you can override or type over. Folders that do not
-exist in your library are never suggested.
+**It also picks the folder for you.** The model's tags and base model are matched
+against the folders you already use — a character LoRA goes to `Characters`, a Wan
+LoRA to `Wan2.2`, an anime style to `Anime`, adult content to `Adult` — and
+**Save to folder** comes up pre-filled. It is a plain text field with a dropdown, so you
+can override it or type a new path. Folders that do not exist in your library are never
+suggested, and video models are matched on base model first, because a Wan LoRA is
+useless anywhere else.
+
+The download runs at the bottom of the window with a progress bar, a running size and a
+**Stop** button, so you can keep searching while it works.
 
 Downloading needs an API key: Civitai requires one for most files.
+
+![Finding and downloading models](https://raw.githubusercontent.com/1000Pro-1997/SmartNode1000/main/media/15-find-models.png)
 
 ---
 
@@ -226,12 +306,15 @@ git clone https://github.com/1000Pro-1997/SmartNode1000.git
 
 Restart ComfyUI. **No extra dependencies** — nothing to `pip install`.
 
-### Plays well with other LoRA managers
+### Nothing else to install
 
-SmartNode1000 reads and writes the same sidecar files that
-[ComfyUI-Lora-Manager](https://github.com/willmiao/ComfyUI-Lora-Manager) and similar
-tools use, so metadata fetched by either side shows up in both. Running one is entirely
-optional.
+Everything Civitai is built in — fetching info and previews, reading a model's version
+list, checking for updates, searching and downloading. **No separate LoRA manager is
+needed**, and none is assumed.
+
+The files it writes are the ordinary sidecars that sit next to each LoRA
+(`<lora>.metadata.json`, `<lora>.preview.*`), so a library some other tool filled in
+already works on first run, and nothing SmartNode1000 fetches is locked inside it.
 
 ---
 
@@ -259,6 +342,7 @@ testing a single change quick.
 | Wildcard favourites | `wildcard_favorites.json` | ✅ Yes |
 | LoRA info from Civitai | `<lora>.metadata.json`, `<lora>.preview.*` | ✅ Yes |
 | Civitai API key | `user_settings.json` (never committed) | ✅ Yes |
+| Update results and "not an update" marks | `civitai_updates.json` (never committed) | ✅ Yes |
 | Checklist items | the workflow file | ❌ No |
 | Selected values | the workflow file | ❌ No |
 
