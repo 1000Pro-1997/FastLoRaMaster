@@ -96,6 +96,26 @@ on your machine only.
 
 ---
 
+### Find and download models without leaving ComfyUI
+
+The **Find models** tab searches Civitai from inside the picker — sort, period, base
+model and an 18+ filter, with previews on the cards and a **Have it** badge on anything
+already in your library (matched by hash, so a renamed copy still counts).
+
+Pick a version and press Download. SmartNode1000 streams it to disk with a progress bar,
+checks the SHA256 against what Civitai published, and writes the metadata and preview
+image next to it — so a downloaded LoRA shows up complete, with trigger words and
+samples, the moment it lands.
+
+It also picks the folder for you. Tags and base model are matched against the folders
+you already use — a character LoRA goes to `Characters`, a Wan LoRA to `Wan2.2`, and so
+on — and the suggestion is a dropdown you can override or type over. Folders that do not
+exist in your library are never suggested.
+
+Downloading needs an API key: Civitai requires one for most files.
+
+---
+
 ### Make a new theme in seconds
 
 Themes are just folders of presets. Create one, name it, start filling it.

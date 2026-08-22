@@ -1,4 +1,4 @@
-/** Civitai 에서 로라 정보·이미지를 받아오는 화면.
+/** Civitai 창 — 내 로라 정보 채우기와 모델 찾기.
  *
  *  서버가 파일 해시로 모델을 찾아 <로라이름>.metadata.json 을 만든다.
  *  여기서는 부르고 진행률만 보여준다.
@@ -11,99 +11,11 @@
  */
 
 import { t } from "./fla_i18n.js";
+import { POLL, addCivitaiStyles, el, json, post, toast } from "./fla_civitai_util.js";
+import { buildBrowseView } from "./fla_civitai_browse.js";
 
-// 진행률을 물어보는 간격(ms). 파일 하나에 1 초 남짓 걸리므로 이 정도면 충분하다.
-const POLL = 700;
 // Civitai 계정 설정 페이지. 안내에서 바로 열어준다.
 const ACCOUNT_URL = "https://civitai.com/user/account";
-
-function addCivitaiStyles() {
-    if (document.getElementById("fla-civitai-style")) return;
-    const style = document.createElement("style");
-    style.id = "fla-civitai-style";
-    style.textContent = `
-      .fla-cv-bg{position:fixed;inset:0;z-index:100015;background:#000b;display:grid;place-items:center;padding:3vh}
-      .fla-cv{width:min(560px,94vw);max-height:88vh;display:flex;flex-direction:column;background:#181a1f;color:#ddd;border:1px solid #4b5360;border-radius:12px;overflow:hidden;box-shadow:0 22px 70px #000;font:14px Arial,sans-serif}
-      .fla-cv-head{display:flex;align-items:center;gap:10px;padding:13px 14px;background:#22262d;border-bottom:1px solid #383e48}.fla-cv-head h2{flex:1;margin:0;font-size:15px;font-weight:700;color:#fff}.fla-cv-head .logo{flex:none;display:grid;width:26px;height:26px;place-items:center;color:#fff;background:#1971c2;border-radius:7px;font-size:14px;font-weight:800}.fla-cv-head button{flex:none;width:32px;height:32px;padding:0;color:#ddd;background:#303640;border:1px solid #454c58;border-radius:7px;font-size:18px;cursor:pointer}.fla-cv-head button:hover{background:#3a424e}
-      .fla-cv-body{padding:14px;overflow-y:auto}
-      .fla-cv-sec{margin-bottom:16px}.fla-cv-sec>h3{margin:0 0 8px;color:#8d95a1;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.4px}
-      .fla-cv-key{display:flex;gap:6px}.fla-cv-key input{flex:1;min-width:0;height:34px;padding:0 10px;color:#eee;background:#111419;border:1px solid #454c58;border-radius:7px}
-      .fla-cv-hint{margin-top:6px;color:#7d858f;font-size:12px;line-height:1.5}.fla-cv-hint a{color:#4dabf7}
-      .fla-cv-btn{height:34px;padding:0 14px;color:#ddd;background:#303640;border:1px solid #454c58;border-radius:7px;font-size:13px;cursor:pointer}.fla-cv-btn:hover{background:#3a424e}.fla-cv-btn:disabled{opacity:.45;cursor:default}
-      .fla-cv-btn.go{color:#fff;background:#1971c2;border-color:#1c7ed6}.fla-cv-btn.go:hover{background:#1c7ed6}
-      .fla-cv-btn.stop{color:#fff;background:#a83426;border-color:#c0392b}.fla-cv-btn.stop:hover{background:#c0392b}
-      .fla-cv-link{padding:0;color:#4dabf7;background:transparent;border:0;font-size:12px;text-decoration:underline;cursor:pointer}.fla-cv-link:hover{color:#74c0fc}
-      .fla-cv-row{display:flex;flex-wrap:wrap;gap:8px}
-      .fla-cv-count{margin-bottom:9px;color:#c8cdd5;font-size:13px}.fla-cv-count b{color:#fff}
-      .fla-cv-check{display:flex;align-items:center;gap:7px;margin-top:10px;color:#98a1ad;font-size:12px;cursor:pointer}.fla-cv-check input{margin:0;cursor:pointer}
-      .fla-cv-bar{height:8px;margin:10px 0 7px;overflow:hidden;background:#111419;border:1px solid #3b424d;border-radius:5px}.fla-cv-bar>div{height:100%;width:0;background:#1971c2;transition:width .2s}
-      .fla-cv-now{color:#98a1ad;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-      .fla-cv-tally{margin-top:5px;color:#98a1ad;font-size:12px}
-      .fla-cv-errors{max-height:150px;margin-top:9px;padding:8px 10px;overflow-y:auto;background:#1d2026;border:1px solid #3b424d;border-radius:7px;color:#c8938c;font-size:12px;line-height:1.55}.fla-cv-errors div{overflow-wrap:anywhere}
-      .fla-cv-toast{position:fixed;z-index:100025;left:50%;bottom:38px;transform:translateX(-50%);padding:9px 16px;color:#fff;background:#1971c2;border-radius:8px;font:13px Arial,sans-serif;box-shadow:0 8px 26px #0009}.fla-cv-toast.bad{background:#c0392b}
-      .fla-cv-note{padding:10px 12px;background:#15263a;border:1px solid #1f4a75;border-left:3px solid #1971c2;border-radius:7px;color:#cfe2f5;font-size:12px;line-height:1.6}
-      .fla-cv-note b{color:#fff}
-      .fla-cv-warn{margin-top:9px;padding:9px 11px;background:#2a2418;border:1px solid #5c4a22;border-radius:7px;color:#e0cd9d;font-size:12px;line-height:1.55}
-      .fla-cv-steps{display:flex;flex-direction:column;gap:15px;margin-top:13px}
-      .fla-cv-step{display:grid;grid-template-columns:24px 1fr;gap:10px;align-items:start}
-      .fla-cv-num{display:grid;width:24px;height:24px;place-items:center;color:#fff;background:#1971c2;border-radius:50%;font-size:12px;font-weight:700}
-      .fla-cv-steptext{color:#c8cdd5;font-size:13px;line-height:1.55}.fla-cv-steptext b{color:#fff}
-      .fla-cv-mock{margin-top:8px;padding:10px;background:#1b1f26;border:1px solid #333a45;border-radius:8px;color:#aeb6c1;font-size:11px}
-      .fla-cv-mockrow{display:flex;align-items:center;gap:8px}
-      .fla-cv-mockavatar{flex:none;width:22px;height:22px;background:#1971c2;border-radius:50%}
-      .fla-cv-mockname{flex:1;color:#dde2e8}
-      .fla-cv-mockchev{color:#7d858f}
-      .fla-cv-mockrule{height:1px;margin:8px 0;background:#333a45}
-      .fla-cv-mockbar{display:flex;gap:8px}
-      .fla-cv-mockicon{display:grid;width:34px;height:24px;place-items:center;background:#252a32;border:1px solid #3a414c;border-radius:5px}
-      .fla-cv-mockicon.on{color:#fff;background:#1971c2;border-color:#4dabf7;box-shadow:0 0 0 2px #4dabf755}
-      .fla-cv-mocktip{margin-top:7px;color:#ffd34e}
-      .fla-cv-mockhead{display:flex;align-items:center;gap:10px}.fla-cv-mockhead b{flex:1;color:#fff;font-size:13px}
-      .fla-cv-mockbtn{flex:none;padding:4px 9px;background:#252a32;border:1px solid #3a414c;border-radius:5px;color:#cfd6de}
-      .fla-cv-mockbtn.on{color:#fff;background:#1971c2;border-color:#4dabf7;box-shadow:0 0 0 2px #4dabf755}
-      .fla-cv-mockdim{margin-top:6px;color:#7d858f;line-height:1.5}
-      .fla-cv-mocktitle{margin-bottom:8px;color:#fff;font-size:13px;font-weight:700}
-      .fla-cv-mockfield{display:flex;align-items:center;gap:8px;margin-bottom:6px}.fla-cv-mockfield>span{flex:none;width:105px;color:#8d95a1}
-      .fla-cv-mockinput{flex:1;min-width:0;padding:4px 8px;color:#dde2e8;background:#111419;border:1px solid #3a414c;border-radius:5px}
-      .fla-cv-mockinput.dim{color:#6b7481}
-      .fla-cv-mocktable{display:grid;grid-template-columns:1fr 52px 52px;gap:1px;margin:9px 0;overflow:hidden;background:#333a45;border:1px solid #333a45;border-radius:5px}
-      .fla-cv-mocktable>div{padding:4px 8px;text-align:center;background:#1e232a}
-      .fla-cv-mocktable>div:nth-child(3n+1){text-align:left}
-      .fla-cv-mocktable>div.h{color:#8d95a1;background:#242932}
-      .fla-cv-mocktable>div.yes{color:#4dabf7}
-      .fla-cv-mockright{display:flex;justify-content:flex-end}
-      .fla-cv-mockkey{display:flex;align-items:center;gap:8px;padding:6px 9px;color:#dde2e8;background:#111419;border:1px solid #3a414c;border-radius:5px;font-family:monospace}
-      .fla-cv-mockkey>span:first-child{flex:1;min-width:0;overflow:hidden}
-    `;
-    document.head.appendChild(style);
-}
-
-function el(tag, className, text) {
-    const node = document.createElement(tag);
-    if (className) node.className = className;
-    if (text !== undefined) node.textContent = text;
-    return node;
-}
-
-function toast(message, error = false) {
-    addCivitaiStyles();
-    const node = el("div", `fla-cv-toast${error ? " bad" : ""}`, message);
-    document.body.appendChild(node);
-    setTimeout(() => node.remove(), 2200);
-}
-
-async function json(url, options) {
-    const res = await fetch(url, options);
-    let data = null;
-    try { data = await res.json(); } catch (e) { /* 본문이 비어 있을 수도 있다 */ }
-    return { ok: res.ok, status: res.status, data };
-}
-
-const post = (url, body) => json(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body ?? {}),
-});
 
 /** 키 유무와 남은 개수, 진행 중인 검사 상태를 한 번에 가져온다. */
 export async function civitaiStatus() {
@@ -207,27 +119,32 @@ const STEPS = [
 ];
 
 
-/** 일괄 가져오기 창. onFinished 는 한 개라도 채워졌을 때만 부른다
- *  (목록을 다시 그려야 새 그림과 이름이 보인다). */
+/** Civitai 창을 연다. onFinished 는 로라 목록이 바뀌었을 때 부른다
+ *  (정보를 채웠거나 새 모델을 받았을 때). */
 export function openCivitaiPanel(onFinished = null) {
     addCivitaiStyles();
 
     const bg = el("div", "fla-cv-bg");
-    bg.innerHTML = `<div class="fla-cv" role="dialog" aria-modal="true"><div class="fla-cv-head"><div class="logo">C</div><h2></h2><button class="close" title="${t("cancel")}">×</button></div><div class="fla-cv-body"></div></div>`;
+    bg.innerHTML = `<div class="fla-cv" role="dialog" aria-modal="true"><div class="fla-cv-head"><div class="logo">C</div><h2></h2><div class="fla-cv-tabs"></div><div class="spacer"></div><button class="close" title="${t("cancel")}">×</button></div><div class="fla-cv-main"></div></div>`;
     document.body.appendChild(bg);
-    bg.querySelector("h2").textContent = t("civitaiTitle");
-    const body = bg.querySelector(".fla-cv-body");
+    // 무엇을 하는 창인지는 탭이 말해준다. 제목은 짧게 둔다.
+    bg.querySelector("h2").textContent = "Civitai";
+    const main = bg.querySelector(".fla-cv-main");
+    const tabsHost = bg.querySelector(".fla-cv-tabs");
 
     let timer = null;
     let changed = false;
     // 키가 있어도 "키 변경" 을 누르면 안내 화면을 다시 보여준다
     let showGuide = false;
 
+    const browse = buildBrowseView(() => { changed = true; });
+
     const close = () => {
         clearTimeout(timer);
+        browse.dispose();
         document.removeEventListener("keydown", key, true);
         bg.remove();
-        // 검사가 백그라운드로 계속 돌 수 있으므로, 채운 게 있으면 목록을 새로 그린다
+        // 받기가 백그라운드로 계속 돌 수 있으므로, 바뀐 게 있으면 목록을 새로 그린다
         if (changed) onFinished?.();
     };
     // 이 창이 열려 있는 동안에는 Esc 가 로라 선택창까지 닫지 않게 막는다
@@ -236,11 +153,17 @@ export function openCivitaiPanel(onFinished = null) {
     bg.onclick = (event) => { if (event.target === bg) close(); };
     document.addEventListener("keydown", key, true);
 
-    // ---------------------------------------------- 안내 화면(키 없을 때)
-    const guide = el("div", "fla-cv-sec");
+    // ---------------------------------------------- 내 라이브러리 탭
+    const libraryPage = el("div", "fla-cv-page");
+    const libraryBody = el("div", "fla-cv-body");
+    const narrow = el("div", "fla-cv-narrow");
+    libraryBody.appendChild(narrow);
+    libraryPage.appendChild(libraryBody);
 
+    // 안내(키 없을 때)
+    const guide = el("div", "fla-cv-sec");
     const note = el("div", "fla-cv-note");
-    note.append(el("b", null, t("civitaiNeedKey")), document.createTextNode(" "), document.createTextNode(t("civitaiNeedKeyDesc")));
+    note.append(el("b", null, t("civitaiNeedKey")), document.createTextNode(" " + t("civitaiNeedKeyDesc")));
     guide.appendChild(note);
 
     const open = el("button", "fla-cv-btn go", t("civitaiOpenAccount"));
@@ -258,11 +181,9 @@ export function openCivitaiPanel(onFinished = null) {
         steps.appendChild(step);
     });
     guide.appendChild(steps);
-
     guide.appendChild(el("div", "fla-cv-warn", t("civitaiKeySecret")));
 
-    const keyHead = el("h3");
-    keyHead.textContent = t("civitaiKey");
+    const keyHead = el("h3", null, t("civitaiKey"));
     keyHead.style.marginTop = "16px";
     const keyRow = el("div", "fla-cv-key");
     const keyInput = el("input");
@@ -303,12 +224,11 @@ export function openCivitaiPanel(onFinished = null) {
     keyInput.addEventListener("keydown", (event) => { if (event.key === "Enter") keySave.onclick(); });
     skip.onclick = () => { showGuide = false; refresh(); };
 
-    // ---------------------------------------------- 가져오기 화면(키 있을 때)
+    // 가져오기(키 있을 때)
     const scan = el("div", "fla-cv-sec");
-
     const keyState = el("div", "fla-cv-row");
     keyState.style.marginBottom = "13px";
-    const keyStateText = el("div", null, "");
+    const keyStateText = el("div");
     keyStateText.style.cssText = "flex:1;min-width:0;color:#98a1ad;font-size:12px;align-self:center";
     const changeKey = el("button", "fla-cv-link", t("civitaiChangeKey"));
     const clearKey = el("button", "fla-cv-link", t("civitaiRemoveKey"));
@@ -342,14 +262,36 @@ export function openCivitaiPanel(onFinished = null) {
     errors.style.display = "none";
     scan.append(count, buttons, replaceRow, bar, now, tally, errors);
 
-    body.append(guide, scan);
+    narrow.append(guide, scan);
+    guide.style.display = "none";
+    scan.style.display = "none";
 
-    /** 안내와 가져오기 중 어느 쪽을 보여줄지 정한다. */
+    // ---------------------------------------------- 탭
+    main.append(libraryPage, browse.root);
+
+    const pages = [
+        [t("civitaiTabLibrary"), libraryPage, null],
+        [t("civitaiTabBrowse"), browse.root, () => browse.activate()],
+    ];
+    const tabButtons = pages.map(([label, page, onShow]) => {
+        const button = el("button", null, label);
+        button.onclick = () => {
+            tabButtons.forEach((b) => b.classList.remove("on"));
+            pages.forEach(([, p]) => p.classList.remove("on"));
+            button.classList.add("on");
+            page.classList.add("on");
+            onShow?.();
+        };
+        tabsHost.appendChild(button);
+        return button;
+    });
+
+    // ---------------------------------------------- 상태 그리기
     function paintView(hasKey) {
         const wantGuide = showGuide || !hasKey;
         guide.style.display = wantGuide ? "" : "none";
         scan.style.display = wantGuide ? "none" : "";
-        if (wantGuide) body.scrollTop = 0;
+        if (wantGuide) libraryBody.scrollTop = 0;
     }
 
     function paint(status) {
@@ -422,8 +364,6 @@ export function openCivitaiPanel(onFinished = null) {
         refresh();
     };
 
-    // 상태를 받기 전에는 둘 다 감춰 둔다(안내가 깜빡 보였다 사라지지 않게)
-    guide.style.display = "none";
-    scan.style.display = "none";
+    tabButtons[0].onclick();
     refresh();
 }
