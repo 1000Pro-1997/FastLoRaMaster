@@ -6,10 +6,9 @@
  */
 
 import { t } from "./fla_i18n.js";
-import {
-    ADULT_LEVEL, POLL, addCivitaiStyles, copyValue, el, json, post, prettySize,
-    renderDescription, toast,
-} from "./fla_civitai_util.js";
+import { ADULT_LEVEL, addCivitaiStyles, el, json, toast } from "./fla_civitai_util.js";
+import { createDownloadBar } from "./fla_civitai_download.js";
+import { clearCache, createModelDetail, loadFolders, markInstalled } from "./fla_civitai_detail.js";
 
 const SORTS = ["Most Downloaded", "Highest Rated", "Newest", "Most Liked"];
 const PERIODS = ["AllTime", "Year", "Month", "Week", "Day"];
@@ -45,54 +44,45 @@ export function buildBrowseView(onInstalled = null) {
     const go = el("button", "fla-cv-btn go", t("civitaiSearch"));
     searchBar.append(query, sort, period, base, nsfw, go);
 
-    // ---------------------------------------------- 결과와 상세
-    const results = el("div", "fla-cv-results");
-    const grid = el("div", "fla-cv-grid");
-    const detail = el("div", "fla-cv-detail");
-    detail.style.display = "none";
-    results.append(grid, detail);
-
-    // ---------------------------------------------- 내려받기 줄
-    const dlBar = el("div", "fla-cv-dlbar");
-    const dlWho = el("div", "who");
-    const dlBarTrack = el("div", "fla-cv-bar");
-    const dlFill = el("div");
-    dlBarTrack.appendChild(dlFill);
-    const dlPct = el("div", "pct");
-    const dlStop = el("button", "fla-cv-btn stop", t("civitaiStop"));
-    dlBar.append(dlWho, dlBarTrack, dlPct, dlStop);
-    dlBar.style.display = "none";
-
-    root.append(searchBar, results, dlBar);
-
     // ---------------------------------------------- 상태
     let items = [];
     let cursor = "";
     let loading = false;
     let picked = null;         // 지금 상세를 보고 있는 모델
-    let folders = [];
-    let dlTimer = null;
-    // 설명까지 받아온 모델. 같은 카드를 다시 눌러도 또 부르지 않는다.
-    const full = new Map();
-    let sawDownload = false;   // 한 번이라도 받았는지(목록 새로고침 여부)
+    // 이번에 받기를 누른 버전. 다 받아지면 "있음" 으로 바꾼다.
+    const sent = new Set();
     // "보기" 로 연 성인 카드. 검색을 새로 하면 도로 가린다.
     const revealed = new Set();
 
-    /** ISO 날짜를 YYYY-MM-DD 로. 못 읽으면 그대로 둔다. */
-    function prettyDate(iso) {
-        if (!iso) return "";
-        const date = new Date(iso);
-        return isNaN(date) ? String(iso) : date.toISOString().slice(0, 10);
-    }
+    // ---------------------------------------------- 결과와 상세
+    const results = el("div", "fla-cv-results");
+    const grid = el("div", "fla-cv-grid");
+    // 오른쪽 상세 칸. 업데이트 확인과 버전 탭도 같은 것을 쓴다.
+    const detail = createModelDetail({
+        revealed,
+        onQueued: (model, version) => { sent.add(version.id); downloads.watch(); },
+        onClose: () => pick(null),
+    });
+    results.append(grid, detail.root);
 
-    async function loadFolders() {
-        try {
-            const { data } = await json("/fla/civitai/folders");
-            folders = data?.folders ?? [];
-        } catch (e) {
-            folders = [];
+    // ---------------------------------------------- 내려받기 줄
+    // 받는 일은 서버가 한다. 여기서는 대기열에 넣고 진행률만 본다.
+    const downloads = createDownloadBar(async () => {
+        onInstalled?.();
+        await loadFolders(true);
+        // 방금 받은 버전에 "있음" 을 찍는다(다시 검색하지 않아도 보이게)
+        for (const model of items) {
+            for (const version of model.versions ?? []) {
+                if (sent.has(version.id)) { version.installed = true; model.installed = true; }
+            }
         }
-    }
+        for (const id of sent) markInstalled(id);
+        sent.clear();
+        render();
+        detail.refresh();
+    });
+
+    root.append(searchBar, results, downloads.root);
 
     // ---------------------------------------------- 검색
     async function search(more = false) {
@@ -113,7 +103,7 @@ export function buildBrowseView(onInstalled = null) {
                 toast(data?.error ?? t("civitaiSearchFail"), true);
                 return;
             }
-            if (!more) { items = []; revealed.clear(); full.clear(); pick(null); }
+            if (!more) { items = []; revealed.clear(); pick(null); }
             items = items.concat(data.items ?? []);
             cursor = data.next_cursor ?? "";
             render();
@@ -196,305 +186,15 @@ export function buildBrowseView(onInstalled = null) {
     }
 
     // ---------------------------------------------- 상세와 받기
+    /** 카드를 고르면 오른쪽 칸에 그 모델을 편다. null 이면 칸을 닫는다. */
     function pick(model, node = null) {
         picked = model;
         for (const other of grid.querySelectorAll(".fla-cv-card")) other.classList.remove("on");
-        if (!model) { detail.style.display = "none"; detail.replaceChildren(); return; }
+        if (!model) { detail.clear(); return; }
         node?.classList.add("on");
-        detail.style.display = "";
-        // 목록이 가진 것만 먼저 그리고, 설명과 나머지 이미지는 받아서 채운다
-        renderDetail(model);
-        loadFull(model);
+        // 목록이 가진 것만 먼저 그리고, 설명과 나머지 예시는 모듈이 받아서 채운다
+        detail.show(model);
     }
-
-    /** 설명·예시는 목록에 실려 오지 않는다. 고른 것만 따로 받아온다. */
-    async function loadFull(model) {
-        if (full.has(model.id)) {
-            picked = full.get(model.id);
-            renderDetail(picked);
-            return;
-        }
-        let fetched;
-        try {
-            const { data } = await json(`/fla/civitai/model?id=${model.id}`);
-            if (!data?.ok) return;
-            fetched = data.model;
-        } catch (e) {
-            return;
-        }
-        full.set(model.id, fetched);
-        // 그 사이 다른 카드를 눌렀으면 화면을 건드리지 않는다
-        if (picked?.id !== model.id) return;
-        picked = fetched;
-        renderDetail(fetched);
-    }
-
-    /** 버전 알약 줄. 고른 것이 파랗다. */
-    function versionStrip(model, index, onPick) {
-        const strip = el("div", "fla-cv-versions");
-        (model.versions ?? []).forEach((version, i) => {
-            const chip = el("button", `fla-cv-version${i === index ? " on" : ""}`);
-            chip.append(document.createTextNode(version.name || `v${i + 1}`));
-            if (version.installed) chip.appendChild(el("span", "have", "✓"));
-            chip.title = [version.base_model, version.file_name].filter(Boolean).join("  ·  ");
-            chip.onclick = () => onPick(i);
-            strip.appendChild(chip);
-        });
-        return strip;
-    }
-
-    /** 좌우로 넘기는 이미지판. */
-    function viewer(images, blurred) {
-        const box = el("div", "fla-cv-viewer");
-        const frame = el("div", "frame");
-        box.appendChild(frame);
-        if (!images.length) {
-            frame.append(t("detailNoSamples"));
-            return { box, dots: el("div") };
-        }
-
-        let at = 0;
-        const counter = el("div", "fla-cv-counter");
-        const dots = el("div", "fla-cv-dots");
-
-        const draw = () => {
-            frame.replaceChildren();
-            const shot = images[at];
-            const isVideo = shot.type === "video" || /\.(mp4|webm)(\?|$)/i.test(shot.url);
-            const media = el(isVideo ? "video" : "img");
-            media.src = shot.url;
-            if (isVideo) {
-                media.muted = true; media.loop = true; media.autoplay = true; media.playsInline = true;
-            } else {
-                media.loading = "lazy";
-            }
-            if (blurred && (shot.nsfw_level ?? 0) >= ADULT_LEVEL) media.classList.add("fla-cv-blur");
-            frame.appendChild(media);
-            counter.textContent = `${at + 1} / ${images.length}`;
-            dots.replaceChildren(...images.map((_, i) => el("span", i === at ? "on" : null)));
-        };
-
-        const step = (delta) => {
-            at = (at + delta + images.length) % images.length;
-            draw();
-        };
-        if (images.length > 1) {
-            const prev = el("button", "fla-cv-arrow prev", "‹");
-            const next = el("button", "fla-cv-arrow next", "›");
-            prev.onclick = () => step(-1);
-            next.onclick = () => step(1);
-            box.append(prev, next);
-        }
-        box.appendChild(counter);
-        draw();
-        return { box, dots };
-    }
-
-    /** Civitai 모델 화면의 Details 표. */
-    function detailsTable(model, version) {
-        const panel = el("div", "fla-cv-panel");
-        const head = el("div", "fla-cv-panelhead");
-        head.appendChild(el("span", null, t("civitaiDetails")));
-        panel.appendChild(head);
-
-        const table = el("div", "fla-cv-table");
-        const row = (label, value) => {
-            if (value === null || value === undefined || value === "") return;
-            table.appendChild(el("div", null, label));
-            const cell = el("div");
-            if (value instanceof Node) cell.appendChild(value);
-            else cell.textContent = String(value);
-            table.appendChild(cell);
-        };
-
-        row(t("detailType"), el("span", "fla-cv-pill", model.type || "LORA"));
-        if (typeof version.downloads === "number") {
-            row(t("civitaiStats"), `↓ ${version.downloads.toLocaleString()}`);
-        }
-        if (version.review) {
-            const tone = { veryPositive: "fla-cv-good", positive: "fla-cv-good", mixed: "fla-cv-mid", negative: "fla-cv-bad" };
-            row(t("civitaiReviews"),
-                el("span", tone[version.review], `${t(`civitaiReview_${version.review}`)} (${version.reviews})`));
-        }
-        row(t("detailPublished"), prettyDate(version.published));
-        row(t("detailBase"), el("span", "fla-cv-good", version.base_model));
-        if (version.clip_skip) row(t("civitaiUsageTips"), el("span", "fla-cv-pill", `CLIP SKIP: ${version.clip_skip}`));
-        if (version.trained_words?.length) row(t("detailTrained"), version.trained_words.join(", "));
-        row(t("detailFile"), version.file_name);
-        row(t("detailSize"), version.size_kb ? prettySize(version.size_kb * 1024) : "");
-        if (version.sha256) {
-            row(t("detailHash"), copyValue(version.sha256.toUpperCase(),
-                version.sha256.slice(0, 12).toUpperCase() + "…"));
-        }
-        if (version.air) row("AIR", copyValue(version.air));
-        if (model.creator) row(t("detailCreator"), `@${model.creator}`);
-
-        panel.appendChild(table);
-        return panel;
-    }
-
-    function renderDetail(model) {
-        const wanted = detail.scrollTop;
-        detail.replaceChildren();
-        detail.appendChild(el("h3", null, model.name));
-        detail.appendChild(el("div", "by", [model.creator && `@${model.creator}`, model.type]
-            .filter(Boolean).join("  ·  ")));
-
-        let index = 0;
-        const host = el("div");
-        detail.appendChild(host);
-
-        const drawVersion = () => {
-            const version = (model.versions ?? [])[index] ?? {};
-            const blurred = (model.nsfw || (model.nsfw_level ?? 0) >= ADULT_LEVEL) && !revealed.has(model.id);
-            host.replaceChildren();
-
-            host.appendChild(versionStrip(model, index, (i) => { index = i; drawVersion(); }));
-
-            const shots = viewer(version.images ?? [], blurred);
-            host.append(shots.box, shots.dots);
-            if (blurred && (version.images ?? []).some((i) => (i.nsfw_level ?? 0) >= ADULT_LEVEL)) {
-                const show = el("button", "fla-cv-btn", t("adultShow"));
-                show.style.cssText = "width:100%;margin-bottom:11px";
-                show.onclick = () => { revealed.add(model.id); drawVersion(); };
-                host.appendChild(show);
-            }
-
-            // 저장 폴더 — 태그를 보고 미리 골라두고, 직접 고치거나 새로 적을 수 있다
-            const folderField = el("div", "fla-cv-field");
-            folderField.appendChild(el("label", null, t("civitaiFolder")));
-            const folderInput = el("input");
-            folderInput.setAttribute("list", "fla-cv-folders");
-            folderInput.placeholder = t("civitaiFolderRoot");
-            folderInput.value = version.folder ?? "";
-            folderField.appendChild(folderInput);
-            const list = el("datalist");
-            list.id = "fla-cv-folders";
-            for (const folder of folders) list.appendChild(new Option(folder, folder));
-            folderField.appendChild(list);
-            host.appendChild(folderField);
-
-            const size = version.size_kb ? ` (${prettySize(version.size_kb * 1024)})` : "";
-            const grab = el("button", `fla-cv-get${version.installed ? " owned" : ""}`);
-            grab.append(document.createTextNode("⬇"), document.createTextNode(
-                `${version.installed ? t("civitaiDownloadAgain") : t("civitaiDownload")}${size}`));
-            grab.disabled = !version.downloadable;
-            grab.onclick = async () => {
-                grab.disabled = true;
-                try {
-                    const { data } = await post("/fla/civitai/download", {
-                        version_id: version.id,
-                        folder: folderInput.value.trim(),
-                        title: model.name,
-                    });
-                    if (!data?.ok) { toast(data?.error ?? t("civitaiDownloadFail"), true); return; }
-                    toast(t("civitaiQueued"));
-                    watchDownloads();
-                } finally {
-                    grab.disabled = false;
-                }
-            };
-            host.appendChild(grab);
-            if (version.installed) host.appendChild(el("div", "fla-cv-now", `✓ ${t("civitaiHaveLong")}`));
-
-            const open = el("a", "fla-cv-link");
-            open.href = `https://civitai.com/models/${model.id}?modelVersionId=${version.id}`;
-            open.target = "_blank";
-            open.rel = "noopener noreferrer";
-            open.textContent = t("detailOpenCivitai");
-            open.style.cssText = "display:inline-block;margin-top:8px";
-            host.appendChild(open);
-
-            host.appendChild(detailsTable(model, version));
-
-            if (model.tags?.length) {
-                const tags = el("div", "fla-cv-tags");
-                for (const tag of model.tags.slice(0, 14)) tags.appendChild(el("div", "fla-cv-tag", tag));
-                host.appendChild(tags);
-            }
-
-            // 설명은 상세를 받아와야 채워진다. 오기 전에는 기다리는 중이라고 둔다.
-            const about = el("div", "fla-cv-panel");
-            const aboutHead = el("div", "fla-cv-panelhead");
-            aboutHead.appendChild(el("span", null, t("tabAbout")));
-            const body = el("div", "fla-cv-desc");
-            renderDescription(body, model.description,
-                full.has(model.id) ? t("detailNoDesc") : t("loading"));
-            about.append(aboutHead, body);
-            host.appendChild(about);
-        };
-
-        drawVersion();
-        detail.scrollTop = wanted;
-    }
-
-    // ---------------------------------------------- 내려받기 진행
-    function paintDownload(state) {
-        const busy = state.running || state.queued > 0;
-        dlBar.style.display = busy || state.errors?.length ? "" : "none";
-        if (!busy) {
-            dlWho.textContent = state.errors?.length
-                ? `${state.errors[0].name} — ${state.errors[0].error}`
-                : `${t("civitaiDone")} ${state.done}`;
-            dlFill.style.width = "0%";
-            dlPct.textContent = "";
-            dlStop.style.display = "none";
-            return;
-        }
-        dlStop.style.display = "";
-        const current = state.current;
-        const queued = state.queued ? `  (+${state.queued})` : "";
-        dlWho.textContent = current
-            ? `${current.title || current.file_name}  ·  ${current.folder}${queued}`
-            : t("civitaiPreparing") + queued;
-        if (state.total > 0) {
-            const percent = Math.round((state.received / state.total) * 100);
-            dlFill.style.width = `${percent}%`;
-            dlPct.textContent = `${percent}%  ·  ${prettySize(state.received)} / ${prettySize(state.total)}`;
-        } else {
-            dlFill.style.width = "0%";
-            dlPct.textContent = prettySize(state.received);
-        }
-    }
-
-    async function watchDownloads() {
-        clearTimeout(dlTimer);
-        let state;
-        try {
-            const { data } = await json("/fla/civitai/download-status");
-            state = data?.download;
-        } catch (e) {
-            return;
-        }
-        if (!state) return;
-        paintDownload(state);
-        if (state.done > 0) sawDownload = true;
-        if (state.running || state.queued > 0) {
-            dlTimer = setTimeout(watchDownloads, POLL);
-        } else if (sawDownload) {
-            // 새로 받은 파일이 목록과 "있음" 표시에 반영되게 한 번만 새로 읽는다
-            sawDownload = false;
-            onInstalled?.();
-            await loadFolders();
-            const done = state.current?.version_id;
-            for (const model of [...items, ...full.values()]) {
-                for (const version of model.versions ?? []) {
-                    if (version.id === done) { version.installed = true; model.installed = true; }
-                }
-            }
-            if (picked) renderDetail(picked);
-        }
-    }
-
-    dlStop.onclick = async () => {
-        dlStop.disabled = true;
-        try {
-            await post("/fla/civitai/download-cancel");
-        } finally {
-            dlStop.disabled = false;
-        }
-        watchDownloads();
-    };
 
     go.onclick = () => search(false);
     query.addEventListener("keydown", (event) => { if (event.key === "Enter") search(false); });
@@ -506,13 +206,15 @@ export function buildBrowseView(onInstalled = null) {
         /** 탭을 처음 열 때 한 번만 검색한다. */
         async activate() {
             await loadFolders();
-            watchDownloads();
+            downloads.watch();
             if (started) return;
             started = true;
             search(false);
         },
         dispose() {
-            clearTimeout(dlTimer);
+            downloads.dispose();
+            // 받아 둔 모델 정보는 창과 함께 버린다(다음에 열 때 새로 읽는다)
+            clearCache();
         },
     };
 }

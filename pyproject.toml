@@ -1,7 +1,7 @@
 [project]
 name = "fastloramaster"
 description = "Pair prompts with their LoRAs. Theme presets shared as JSON, per-node checklists, wildcard autocomplete, and a resolution picker with ratio lock."
-version = "1.3.0"
+version = "1.4.0"
 license = "MIT"
 
 # classifiers = [

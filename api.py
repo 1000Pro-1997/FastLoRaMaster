@@ -432,6 +432,63 @@ async def post_lora_preview_upload(request):
     return web.json_response({"ok": True, "stamp": int(time.time())})
 
 
+@routes.post("/fla/lora-delete")
+async def post_lora_delete(request):
+    """로라 파일과 옆에 놓인 것들(metadata.json, 대표 이미지)을 지운다.
+
+    되돌릴 수 없으므로 화면에서 한 번 더 물어본 뒤 부른다. 여기서는 목록에
+    실제로 있는 이름만 받고, 지우기 전에 로라 폴더 안인지 다시 확인한다.
+    """
+    try:
+        body = await request.json()
+    except Exception:
+        return web.json_response({"ok": False, "error": "Bad request"}, status=400)
+
+    name = body.get("name", "")
+    if name not in folder_paths.get_filename_list("loras"):
+        return web.json_response({"ok": False, "error": "LoRA not found"}, status=404)
+
+    full = _inside_lora_folders(folder_paths.get_full_path("loras", name) or "")
+    if full is None or not os.path.isfile(full):
+        return web.json_response({"ok": False, "error": "LoRA not found"}, status=404)
+
+    stem = os.path.splitext(full)[0]
+    metadata_path = stem + ".metadata.json"
+    # 곁다리 파일은 이름 규칙이 여럿이다(.preview.png, .png, ...).
+    # 메타데이터가 딴 이름을 가리키고 있을 수도 있어 그것도 같이 본다.
+    targets = [full, metadata_path]
+    for ext in PREVIEW_EXTS:
+        targets.append(stem + ".preview" + ext)
+        targets.append(stem + ext)
+    configured = _preview_path(stem, _load_metadata(metadata_path).get("preview_url"))
+    if configured:
+        targets.append(configured)
+
+    removed = []
+    for path in dict.fromkeys(targets):
+        if not os.path.isfile(path):
+            continue
+        try:
+            os.remove(path)
+        except OSError as e:
+            # 모델 파일을 못 지웠으면 실패다. 곁다리는 남아도 그냥 넘어간다.
+            if os.path.realpath(path) == os.path.realpath(full):
+                return web.json_response({"ok": False, "error": str(e)}, status=500)
+            continue
+        removed.append(os.path.basename(path))
+
+    # 목록과 '있음' 표시가 바로 반영되게 캐시를 버린다
+    folder_paths.filename_list_cache.pop("loras", None)
+    try:
+        from . import civitai
+        civitai._invalidate_installed()
+        civitai._invalidate_pending()
+    except Exception:
+        pass  # Civitai 쪽이 없어도 삭제 자체는 끝났다
+
+    return web.json_response({"ok": True, "name": name, "removed": removed})
+
+
 @routes.post("/fla/lora-favorite")
 async def post_lora_favorite(request):
     try:

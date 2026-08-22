@@ -1,7 +1,10 @@
-/** Civitai 창 — 내 로라 정보 채우기와 모델 찾기.
+/** Civitai 창 — 내 로라 정보 채우기, 업데이트 확인, 모델 찾기.
  *
  *  서버가 파일 해시로 모델을 찾아 <로라이름>.metadata.json 을 만든다.
  *  여기서는 부르고 진행률만 보여준다.
+ *
+ *  "내 로라" 탭은 좌우로 나뉜다. 왼쪽은 조작판(키·가져오기·업데이트 확인),
+ *  오른쪽은 찾은 업데이트 목록이다. 목록 쪽은 fla_civitai_updates.js 가 만든다.
  *
  *  API 키가 없으면 발급 안내를 먼저 보여준다. 안내에 쓰는 그림은 Civitai 화면을
  *  다시 그린 것이다(실제 화면을 캡처해 두면 계정 이름·키가 같이 남는다).
@@ -13,6 +16,7 @@
 import { t } from "./fla_i18n.js";
 import { POLL, addCivitaiStyles, el, json, post, toast } from "./fla_civitai_util.js";
 import { buildBrowseView } from "./fla_civitai_browse.js";
+import { buildUpdatesView } from "./fla_civitai_updates.js";
 
 // Civitai 계정 설정 페이지. 안내에서 바로 열어준다.
 const ACCOUNT_URL = "https://civitai.com/user/account";
@@ -136,12 +140,18 @@ export function openCivitaiPanel(onFinished = null) {
     let changed = false;
     // 키가 있어도 "키 변경" 을 누르면 안내 화면을 다시 보여준다
     let showGuide = false;
+    // "키 없이 계속" 을 누르면 키가 없어도 조작판을 보여준다(공개 API 로도 대부분 된다)
+    let skipped = false;
+    // 업데이트 칸은 키가 있을 때 한 번만 깨운다
+    let updatesAwake = false;
 
     const browse = buildBrowseView(() => { changed = true; });
+    const updates = buildUpdatesView(() => { changed = true; });
 
     const close = () => {
         clearTimeout(timer);
         browse.dispose();
+        updates.dispose();
         document.removeEventListener("keydown", key, true);
         bg.remove();
         // 받기가 백그라운드로 계속 돌 수 있으므로, 바뀐 게 있으면 목록을 새로 그린다
@@ -154,11 +164,27 @@ export function openCivitaiPanel(onFinished = null) {
     document.addEventListener("keydown", key, true);
 
     // ---------------------------------------------- 내 라이브러리 탭
+    //
+    // 키가 없을 때는 안내만 가운데에 넓게 보여주고, 키가 있으면 좌우로 쪼갠다.
+    // 왼쪽은 조작판(키·가져오기·업데이트 확인), 오른쪽은 찾은 업데이트 목록.
     const libraryPage = el("div", "fla-cv-page");
     const libraryBody = el("div", "fla-cv-body");
     const narrow = el("div", "fla-cv-narrow");
     libraryBody.appendChild(narrow);
-    libraryPage.appendChild(libraryBody);
+    const split = el("div", "fla-cv-split");
+    const rail = el("div", "fla-cv-rail");
+    split.append(rail, updates.pane);
+    libraryPage.append(libraryBody, split);
+
+    /** 왼쪽 칸에 넣는 상자 하나. */
+    function railBox(label) {
+        const root = el("div", "fla-cv-box");
+        const head = el("div", "fla-cv-boxhead");
+        head.appendChild(el("span", null, label));
+        const body = el("div", "fla-cv-boxbody");
+        root.append(head, body);
+        return { root, head, body };
+    }
 
     // 안내(키 없을 때)
     const guide = el("div", "fla-cv-sec");
@@ -207,6 +233,8 @@ export function openCivitaiPanel(onFinished = null) {
             if (!data?.ok) { toast(data?.error ?? t("civitaiFetchFail"), true); return false; }
             keyInput.value = "";
             toast(data.has_key ? t("civitaiKeySaved") : t("civitaiKeyCleared"));
+            // 키를 지웠으면 안내를 다시 보여준다
+            if (!data.has_key) skipped = false;
             // 키를 넣었으면 바로 가져오기 화면으로 넘어간다
             showGuide = false;
             await refresh();
@@ -222,22 +250,22 @@ export function openCivitaiPanel(onFinished = null) {
         saveKey(value);
     };
     keyInput.addEventListener("keydown", (event) => { if (event.key === "Enter") keySave.onclick(); });
-    skip.onclick = () => { showGuide = false; refresh(); };
+    skip.onclick = () => { showGuide = false; skipped = true; refresh(); };
 
-    // 가져오기(키 있을 때)
-    const scan = el("div", "fla-cv-sec");
+    // 키 상자(키 있을 때)
+    const keyBox = railBox(t("civitaiKey"));
     const keyState = el("div", "fla-cv-row");
-    keyState.style.marginBottom = "13px";
     const keyStateText = el("div");
     keyStateText.style.cssText = "flex:1;min-width:0;color:#98a1ad;font-size:12px;align-self:center";
     const changeKey = el("button", "fla-cv-link", t("civitaiChangeKey"));
     const clearKey = el("button", "fla-cv-link", t("civitaiRemoveKey"));
     keyState.append(keyStateText, changeKey, clearKey);
-    scan.appendChild(keyState);
+    keyBox.body.appendChild(keyState);
     changeKey.onclick = () => { showGuide = true; paintView(true); };
     clearKey.onclick = () => saveKey("");
 
-    scan.appendChild(el("h3", null, t("civitaiScan")));
+    // 가져오기 상자
+    const scanBox = railBox(t("civitaiScan"));
     const count = el("div", "fla-cv-count");
     const buttons = el("div", "fla-cv-row");
     const scanMissing = el("button", "fla-cv-btn go", t("civitaiScanMissing"));
@@ -260,17 +288,19 @@ export function openCivitaiPanel(onFinished = null) {
     const tally = el("div", "fla-cv-tally");
     const errors = el("div", "fla-cv-errors");
     errors.style.display = "none";
-    scan.append(count, buttons, replaceRow, bar, now, tally, errors);
+    scanBox.body.append(count, buttons, replaceRow, bar, now, tally, errors);
 
-    narrow.append(guide, scan);
+    narrow.appendChild(guide);
+    rail.append(keyBox.root, scanBox.root, updates.controls, updates.cleanup);
+    // 키가 있는지 알기 전까지는 둘 다 감춰 둔다(잘못된 화면이 잠깐 스치지 않게)
     guide.style.display = "none";
-    scan.style.display = "none";
+    split.style.display = "none";
 
     // ---------------------------------------------- 탭
     main.append(libraryPage, browse.root);
 
     const pages = [
-        [t("civitaiTabLibrary"), libraryPage, null],
+        [t("civitaiTabLibrary"), libraryPage, () => { if (updatesAwake) updates.activate(); }],
         [t("civitaiTabBrowse"), browse.root, () => browse.activate()],
     ];
     const tabButtons = pages.map(([label, page, onShow]) => {
@@ -288,10 +318,16 @@ export function openCivitaiPanel(onFinished = null) {
 
     // ---------------------------------------------- 상태 그리기
     function paintView(hasKey) {
-        const wantGuide = showGuide || !hasKey;
+        const wantGuide = showGuide || (!hasKey && !skipped);
         guide.style.display = wantGuide ? "" : "none";
-        scan.style.display = wantGuide ? "none" : "";
+        libraryBody.style.display = wantGuide ? "" : "none";
+        split.style.display = wantGuide ? "none" : "flex";
         if (wantGuide) libraryBody.scrollTop = 0;
+        // 업데이트 확인은 키가 있어야 뜻이 있다(공개 API 로도 되지만 자주 막힌다)
+        if (!wantGuide && !updatesAwake) {
+            updatesAwake = true;
+            updates.activate();
+        }
     }
 
     function paint(status) {

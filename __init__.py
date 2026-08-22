@@ -12,6 +12,7 @@ from .nodes_checklist import (
 )
 from . import api  # noqa: F401  API 라우트 등록
 from . import civitai  # noqa: F401  Civitai 라우트 등록(api 의 헬퍼를 쓴다)
+from . import civitai_updates  # noqa: F401  업데이트 확인 라우트(civitai 의 헬퍼를 쓴다)
 
 # 노드가 늘어나면 여기에 모아서 등록한다.
 NODE_CLASS_MAPPINGS = {**_LORA_NODES, **_RES_NODES, **_CHK_NODES}

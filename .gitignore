@@ -19,6 +19,7 @@ node.zip
 # Per-user UI state (toggles, folder, favorites filter)
 user_settings.json
 wildcard_favorites.json
+civitai_updates.json
 
 # Source recordings for README GIFs (published copies live in media/)
 움짤/

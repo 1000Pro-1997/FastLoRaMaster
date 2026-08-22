@@ -1,11 +1,14 @@
 import { t } from "./fla_i18n.js";
 import { releaseWidgetCapture, releaseWidgetCaptureSoon } from "./fla_widget_mouse.js";
 import { civitaiStatus, fetchLoraInfo, openCivitaiPanel } from "./fla_civitai.js";
+import { clearCache, createModelDetail } from "./fla_civitai_detail.js";
 
 // 검색을 미루는 시간(ms). 이만큼 입력이 없으면 그때 한 번 거른다.
 const SEARCH_DELAY = 300;
 // Civitai nsfwLevel 비트마스크에서 R 등급 이상만 성인 이미지로 가린다.
 const ADULT_LEVEL = 4;
+// 버전 탭에서 받기 진행률을 물어보는 간격(ms).
+const DOWNLOAD_POLL = 700;
 
 let libraryPromise;
 let settingsCache = null;
@@ -62,10 +65,12 @@ export function addStyles() {
       .fla-lp-content{display:flex;flex:1;min-width:0;flex-direction:column}.fla-lp-path{display:flex;align-items:center;min-height:41px;padding:0 12px;gap:4px;background:#1d2026;border-bottom:1px solid #383e48}.fla-lp-crumb{position:relative;display:inline-flex;align-items:center}.fla-lp-crumb>button{padding:6px 2px;color:#72baff;background:transparent;border:0;cursor:pointer}.fla-lp-crumb .arrow{padding-left:5px}.fla-lp-menu{position:absolute;z-index:5;left:0;top:30px;min-width:175px;max-height:300px;padding:5px;overflow-y:auto;background:#292d34;border:1px solid #505763;border-radius:6px;box-shadow:0 8px 25px #000}.fla-lp-menu button{display:block;width:100%;padding:7px 10px;color:#ddd;background:transparent;border:0;border-radius:4px;text-align:left;cursor:pointer}.fla-lp-menu button:hover{background:#3a424e}.fla-lp-count{margin-left:auto;color:#929ba8}
       .fla-lp-grid{flex:1;min-height:0;padding:12px;overflow-x:hidden;overflow-y:scroll;scrollbar-gutter:stable;display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));grid-auto-rows:max-content;align-content:start;align-items:start;gap:12px}.fla-lp-card{position:relative;display:block;min-width:0;height:auto;padding:0;overflow:hidden;color:#ddd;background:#242830;border:1px solid #3b424d;border-radius:9px;cursor:pointer;box-sizing:border-box}.fla-lp-card:hover{border-color:#79a9d1;box-shadow:0 3px 14px #0008}.fla-lp-preview{position:relative;display:grid;width:100%;height:auto;aspect-ratio:3 / 4;place-items:center;overflow:hidden;color:#59616d;background:#111318}.fla-lp-preview img,.fla-lp-preview video{position:absolute;inset:0;display:block;width:100%;height:100%;object-fit:cover}.fla-lp-shade{position:absolute;inset:0;pointer-events:none;background:linear-gradient(#000b,#0000 32%,#0000 55%,#000c)}
       .fla-lp-title{position:absolute;top:9px;left:9px;right:42px;pointer-events:none;overflow:hidden;color:#fff;font-weight:700;line-height:1.28;text-shadow:0 1px 3px #000;white-space:normal;overflow-wrap:anywhere;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3}.fla-lp-star,.fla-lp-copy{position:absolute;z-index:2;right:7px;width:30px;height:30px;padding:0;color:#fff;background:#111a;border:0;border-radius:50%;cursor:pointer}.fla-lp-star{top:6px;font-size:20px}.fla-lp-star.on{color:#ffd34e}.fla-lp-copy{top:40px;display:grid;place-items:center}.fla-lp-copy svg{width:21px;height:21px}.fla-lp-copy:hover{background:#2f6fd0}.fla-lp-tags{position:absolute;left:8px;right:8px;bottom:8px;pointer-events:none;display:flex;flex-direction:column;align-items:flex-start;gap:3px}.fla-lp-badge{max-width:100%;padding:3px 6px;color:#fff;background:#111d;border-radius:4px;font-size:11px;white-space:normal;overflow-wrap:anywhere}.fla-lp-version{max-width:100%;padding:3px 6px;color:#ddd;background:#111d;border-radius:4px;font-size:11px;white-space:normal;overflow-wrap:anywhere}.fla-lp-noinfo{color:#ffcf6b;background:#000d}.fla-lp-mark{padding:0 1px;color:#171717;background:#ffd84d;border-radius:2px;text-shadow:none}.fla-lp-empty{padding:70px;text-align:center;color:#89919d}
-      .fla-lp-dt-bg{position:fixed;inset:0;z-index:100010;background:#000b;display:grid;place-items:center;padding:3vh}.fla-lp-dt{width:min(1100px,94vw);height:min(860px,92vh);display:flex;flex-direction:column;background:#181a1f;color:#ddd;border:1px solid #4b5360;border-radius:12px;overflow:hidden;box-shadow:0 22px 70px #000;font:14px Arial,sans-serif}
+      .fla-lp-dt-bg{position:fixed;inset:0;z-index:100010;background:#000b;display:grid;place-items:center;padding:3vh}.fla-lp-dt{width:min(1400px,96vw);height:min(900px,94vh);display:flex;flex-direction:column;background:#181a1f;color:#ddd;border:1px solid #4b5360;border-radius:12px;overflow:hidden;box-shadow:0 22px 70px #000;font:14px Arial,sans-serif}
       .fla-lp-dt-head{display:flex;align-items:flex-start;gap:10px;padding:13px 14px;background:#22262d;border-bottom:1px solid #383e48}.fla-lp-dt-titles{flex:1;min-width:0}.fla-lp-dt-head h2{margin:0;font-size:16px;font-weight:700;color:#fff;overflow-wrap:anywhere}.fla-lp-dt-head .sub{margin-top:3px;color:#98a1ad;font-size:12px;overflow-wrap:anywhere}.fla-lp-dt-head button{flex:none;width:34px;height:34px;padding:0;color:#ddd;background:#303640;border:1px solid #454c58;border-radius:7px;font-size:19px;cursor:pointer}.fla-lp-dt-head button:hover{background:#3a424e}
       .fla-lp-dt-tabs{display:flex;gap:2px;padding:0 12px;background:#1d2026;border-bottom:1px solid #383e48}.fla-lp-dt-tabs button{position:relative;padding:11px 16px;color:#98a1ad;background:transparent;border:0;font-size:13px;font-weight:600;cursor:pointer}.fla-lp-dt-tabs button:hover{color:#c8cdd5}.fla-lp-dt-tabs button.on{color:#5aa9ff}.fla-lp-dt-tabs button.on::after{content:"";position:absolute;left:8px;right:8px;bottom:-1px;height:2px;background:#5aa9ff;border-radius:2px}
-      .fla-lp-dt-body{flex:1;min-height:0;padding:14px;overflow-y:auto}
+      .fla-lp-dt-split{display:flex;flex:1;min-height:0}
+      .fla-lp-dt-body{flex:1;min-width:0;min-height:0;padding:14px;overflow-y:auto}
+      .fla-lp-dt-split>.fla-cv-detail{width:420px}
       .fla-lp-dt-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}.fla-lp-dt-shot{position:relative;display:block;overflow:hidden;background:#111318;border:1px solid #3b424d;border-radius:9px}.fla-lp-dt-frame{position:relative;overflow:hidden}.fla-lp-dt-shot img,.fla-lp-dt-shot video{display:block;width:100%;height:auto}.fla-lp-dt-meta{padding:8px 10px;color:#aab2bd;font-size:11px;line-height:1.45;border-top:1px solid #2c323b}.fla-lp-dt-meta b{color:#c8cdd5;font-weight:600}.fla-lp-dt-metahead{display:flex;align-items:center;gap:8px;margin-bottom:5px}.fla-lp-dt-metahead b{flex:1}.fla-lp-dt-copy{flex:none;padding:3px 9px;color:#dbe3ea;background:#2b3138;border:1px solid #3d444e;border-radius:5px;font-size:11px;cursor:pointer}.fla-lp-dt-copy:hover{background:#3a424e;border-color:#5a6472}.fla-lp-dt-prompt{max-height:74px;overflow-y:auto;overflow-wrap:anywhere}
       .fla-lp-dt-rows{display:grid;grid-template-columns:max-content 1fr;gap:9px 16px;align-items:start}.fla-lp-dt-rows dt{color:#8d95a1;font-size:12px}.fla-lp-dt-rows dd{margin:0;color:#dde2e8;font-size:13px;overflow-wrap:anywhere}
       .fla-lp-dt-desc{color:#c8cdd5;font-size:13px;line-height:1.65;overflow-wrap:anywhere}.fla-lp-dt-desc p{margin:0 0 9px}.fla-lp-dt-desc a{color:#5aa9ff}.fla-lp-dt-desc img{max-width:100%;height:auto;border-radius:6px}
@@ -73,6 +78,20 @@ export function addStyles() {
       .fla-lp-dt-sec{margin-bottom:18px}.fla-lp-dt-sec>h3{margin:0 0 8px;color:#8d95a1;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.4px}
       .fla-lp-dt-link{display:inline-block;margin-top:4px;padding:7px 14px;color:#fff;background:#2f6fd0;border-radius:7px;font-size:13px;text-decoration:none}.fla-lp-dt-link:hover{background:#3b82f6}
       .fla-lp-dt-empty{padding:60px;text-align:center;color:#89919d}
+      .fla-lp-vr-list{display:flex;flex-direction:column;gap:8px}
+      .fla-lp-vr{display:flex;gap:11px;padding:9px;background:#242830;border:1px solid #3b424d;border-radius:9px;cursor:pointer}.fla-lp-vr.on{background:#2d2a21;border-color:#4a4230}.fla-lp-vr:hover{border-color:#4d5666}.fla-lp-vr.picked{border-color:#5aa9ff;box-shadow:0 0 0 2px #2f6fd0aa}
+      .fla-lp-vr-shot{position:relative;flex:none;display:grid;width:74px;height:74px;place-items:center;overflow:hidden;background:#111318;border-radius:7px}.fla-lp-vr-shot img,.fla-lp-vr-shot video{width:100%;height:100%;object-fit:cover}
+      .fla-lp-vr-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px;justify-content:center}
+      .fla-lp-vr-name{display:flex;align-items:center;gap:7px;color:#fff;font-size:13px;font-weight:700;overflow-wrap:anywhere}.fla-lp-vr-name a{flex:none;color:#5aa9ff;font-size:12px;text-decoration:none}.fla-lp-vr-name a:hover{color:#8cc4ff}
+      .fla-lp-vr-tags{display:flex;flex-wrap:wrap;gap:4px}.fla-lp-vr-tag{padding:2px 8px;border-radius:20px;font-size:11px;color:#c8cdd5;background:#2b3138;border:1px solid #3d444e}.fla-lp-vr-tag.new{color:#9dcbff;background:#1c3450;border-color:#2f5c8f}.fla-lp-vr-tag.mine{color:#ffd88a;background:#3a2f18;border-color:#7a5f23}.fla-lp-vr-tag.have{color:#8ee0a1;background:#1c3526;border-color:#2f6b45}
+      .fla-lp-vr-meta{color:#98a1ad;font-size:12px}
+      .fla-lp-vr-file{color:#7d858f;font-size:11px;overflow-wrap:anywhere}
+      .fla-lp-vr-acts{flex:none;display:flex;flex-direction:column;justify-content:center;gap:6px}
+      .fla-lp-vr-btn{min-width:92px;height:32px;padding:0 14px;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer}.fla-lp-vr-btn:disabled{opacity:.45;cursor:default}
+      .fla-lp-vr-btn.get{color:#fff;background:#2f6fd0;border:1px solid #3b82f6}.fla-lp-vr-btn.get:hover:not(:disabled){background:#3b82f6}
+      .fla-lp-vr-btn.del{color:#ff8477;background:transparent;border:1px solid #a8483c}.fla-lp-vr-btn.del:hover:not(:disabled){color:#fff;background:#a83426}
+      .fla-lp-vr-bar{display:flex;align-items:center;gap:10px;margin-bottom:9px;padding:8px 11px;background:#1d2026;border:1px solid #3b424d;border-radius:8px;font-size:12px;color:#98a1ad}.fla-lp-vr-bar .who{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.fla-lp-vr-bar .track{flex:1;min-width:60px;height:8px;overflow:hidden;background:#111419;border:1px solid #3b424d;border-radius:5px}.fla-lp-vr-bar .fill{width:0;height:100%;background:#1971c2;transition:width .2s}.fla-lp-vr-bar .pct{flex:none;white-space:nowrap}
+      .fla-lp-vr-note{padding:22px;text-align:center;color:#89919d;font-size:13px;line-height:1.6}
       .fla-lp-dt-model{display:grid;grid-template-columns:minmax(200px,300px) 1fr;gap:20px;align-items:start}@media (max-width:640px){.fla-lp-dt-model{grid-template-columns:1fr}}.fla-lp-dt-cover{display:flex;flex-direction:column;gap:8px}.fla-lp-dt-cover>h3{margin:0;color:#8d95a1;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.4px}.fla-lp-dt-coverbox{display:grid;place-items:center;overflow:hidden;background:#111318;border:1px solid #3b424d;border-radius:9px}.fla-lp-dt-coverbox img,.fla-lp-dt-coverbox video{display:block;width:100%;height:auto}.fla-lp-dt-setcover{position:absolute;z-index:4;left:8px;top:8px;padding:5px 10px;color:#fff;background:#000a;border:1px solid #ffffff33;border-radius:6px;font-size:11px;cursor:pointer}.fla-lp-dt-setcover:hover{background:#2f6fd0;border-color:#3b82f6}.fla-lp-dt-setcover:disabled{opacity:.5;cursor:default}
       .fla-lp-toast{position:fixed;z-index:100020;left:50%;bottom:38px;transform:translateX(-50%);padding:9px 16px;color:#fff;background:#2f6fd0;border-radius:8px;font:13px Arial,sans-serif;box-shadow:0 8px 26px #0009}.fla-lp-toast.bad{background:#c0392b}
       .fla-lp-blur{filter:blur(18px);transform:scale(1.06)}.fla-lp-veil{position:absolute;inset:0;z-index:3;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;background:#0006;pointer-events:none}.fla-lp-veil button{pointer-events:auto}.fla-lp-veil span{padding:5px 11px;color:#fff;background:#000a;border-radius:6px;font-size:13px;font-weight:700}.fla-lp-veil button{padding:5px 15px;color:#fff;background:#2f6fd0;border:0;border-radius:6px;font-size:12px;cursor:pointer}.fla-lp-veil button:hover{background:#3b82f6}.fla-lp-head .adult.on{color:#fff;background:#c0392b;border-color:#e05c4a}
@@ -290,7 +309,7 @@ export async function showLoraDetail(name, blurAdult = true, onPreviewChanged = 
 
     const bg = document.createElement("div");
     bg.className = "fla-lp-dt-bg";
-    bg.innerHTML = `<div class="fla-lp-dt" role="dialog" aria-modal="true"><div class="fla-lp-dt-head"><div class="fla-lp-dt-titles"><h2></h2><div class="sub"></div></div><button class="close" title="${t("cancel")}">×</button></div><div class="fla-lp-dt-tabs"></div><div class="fla-lp-dt-body"></div></div>`;
+    bg.innerHTML = `<div class="fla-lp-dt" role="dialog" aria-modal="true"><div class="fla-lp-dt-head"><div class="fla-lp-dt-titles"><h2></h2><div class="sub"></div></div><button class="close" title="${t("cancel")}">×</button></div><div class="fla-lp-dt-tabs"></div><div class="fla-lp-dt-split"><div class="fla-lp-dt-body"></div></div></div>`;
     document.body.appendChild(bg);
 
     const paintHead = () => {
@@ -303,8 +322,41 @@ export async function showLoraDetail(name, blurAdult = true, onPreviewChanged = 
     const tabsHost = bg.querySelector(".fla-lp-dt-tabs");
     const body = bg.querySelector(".fla-lp-dt-body");
 
+    // 버전 줄을 누르면 오른쪽에 펴는 모델 상세 칸(모델 찾기 탭과 같은 것).
+    const side = createModelDetail({
+        onQueued: () => {
+            if (versionHost?.isConnected) {
+                watchDownloads(versionHost, versionHost.querySelector(".fla-lp-vr-bar"));
+            }
+        },
+        onClose: () => markPicked(null),
+    });
+    bg.querySelector(".fla-lp-dt-split").appendChild(side.root);
+
+    // 오른쪽에 펴 놓은 버전. 목록을 다시 그려도 표시가 남게 기억해 둔다.
+    let pickedVersion = null;
+
+    /** 지금 펴 놓은 버전 줄에 표시를 남긴다. */
+    function markPicked(versionId) {
+        pickedVersion = versionId ?? null;
+        for (const row of bg.querySelectorAll(".fla-lp-vr")) {
+            row.classList.toggle("picked",
+                pickedVersion !== null && Number(row.dataset.version) === pickedVersion);
+        }
+    }
+
+    // 지금 그려 둔 버전 목록 칸. 받기가 끝나면 이 칸만 다시 그린다.
+    let versionHost = null;
+    // 버전 탭에서 받기 진행률을 물어보는 타이머. 창을 닫으면 같이 멈춘다.
+    let dlTimer = null;
     // 등록할 때와 같은 capture 플래그로 지워야 실제로 떨어진다
-    const close = () => { document.removeEventListener("keydown", key, true); bg.remove(); };
+    const close = () => {
+        clearTimeout(dlTimer);
+        side.dispose();
+        clearCache();
+        document.removeEventListener("keydown", key, true);
+        bg.remove();
+    };
     // 상세 창이 열려 있으면 Esc 가 로라 목록까지 닫지 않도록 여기서 막는다
     const key = (event) => { if (event.key === "Escape") { event.stopPropagation(); close(); } };
     bg.querySelector(".close").onclick = close;
@@ -353,6 +405,8 @@ export async function showLoraDetail(name, blurAdult = true, onPreviewChanged = 
         }
         if (!fresh?.ok) return;
         data = fresh;
+        // 정보를 새로 받으면 다른 모델을 가리킬 수도 있다. 버전 목록도 다시 읽는다.
+        versions = null;
         paintHead();
         onInfoChanged?.();
         // 보고 있던 탭을 그대로 다시 그린다
@@ -578,7 +632,284 @@ export async function showLoraDetail(name, blurAdult = true, onPreviewChanged = 
         section(t("tabAbout"), desc);
     }
 
-    /** 버전·파일 정보 탭. */
+    // ------------------------------------------------ 버전 탭
+    //
+    // Civitai 모델 화면처럼 이 모델의 모든 버전을 늘어놓는다. 아직 없는 버전은
+    // 받고, 이미 가진 버전은 지운다. 목록은 한 번만 받아 캐시해 둔다.
+
+    // null 이면 아직 안 받아봤다. 받아온 뒤에는 모델(실패하면 false).
+    let versions = null;
+    let versionsBusy = false;
+    // 못 받아온 까닭. 지워진 모델이면 서버가 알려준다.
+    let versionsError = "";
+    // 이미 목록에 반영한 받기 완료 시각. 같은 완료로 두 번 새로 읽지 않는다.
+    let lastFinished = 0;
+
+    /** 이 모델의 버전 목록을 Civitai 에서 받아온다. */
+    async function loadVersions() {
+        if (versionsBusy || !data.model_id) return;
+        versionsBusy = true;
+        try {
+            // 지워진 모델은 404 로 온다. 그때도 까닭이 본문에 실려 있다.
+            const res = await fetch(`/fla/civitai/model?id=${encodeURIComponent(data.model_id)}`);
+            let body = null;
+            try { body = await res.json(); } catch (e) { body = null; }
+            versions = body?.ok ? body.model : false;
+            versionsError = body?.ok ? "" : (body?.error ?? "");
+        } catch (e) {
+            versions = false;
+            versionsError = "";
+        } finally {
+            versionsBusy = false;
+        }
+    }
+
+    /** 받는 중인 것이 있으면 진행률을 보여주고, 끝나면 목록을 다시 읽는다. */
+    async function watchDownloads(host, bar) {
+        clearTimeout(dlTimer);
+        let state;
+        try {
+            const res = await fetch("/fla/civitai/download-status");
+            state = res.ok ? (await res.json()).download : null;
+        } catch (e) {
+            return;
+        }
+        if (!state || !bar.isConnected) return;
+
+        const busy = state.running || state.queued > 0;
+        bar.style.display = busy ? "" : "none";
+        if (busy) {
+            const current = state.current;
+            const queued = state.queued ? `  (+${state.queued})` : "";
+            const percent = state.total > 0 ? Math.round((state.received / state.total) * 100) : 0;
+            bar.querySelector(".who").textContent = current
+                ? `${current.file_name}  ·  ${current.folder}${queued}`
+                : t("civitaiPreparing") + queued;
+            bar.querySelector(".fill").style.width = `${percent}%`;
+            bar.querySelector(".pct").textContent = state.total > 0
+                ? `${percent}%  ·  ${prettySize(state.received)} / ${prettySize(state.total)}`
+                : prettySize(state.received);
+            dlTimer = setTimeout(() => watchDownloads(host, bar), DOWNLOAD_POLL);
+            return;
+        }
+        // 다 받았으면 파일이 늘었다. 목록과 "있음" 표시를 새로 읽는다.
+        if (state.done > 0 || state.failed > 0) {
+            if ((state.finished_at ?? 0) === lastFinished) return;
+            lastFinished = state.finished_at ?? 0;
+            if (state.failed > 0 && state.errors?.length) {
+                toast(`${state.errors[0].name} — ${state.errors[0].error}`, true);
+            }
+            libraryPromise = null;
+            versions = null;
+            onInfoChanged?.();
+            await loadVersions();
+            if (host.isConnected) paintVersions(host);
+        }
+    }
+
+    /** 한 버전 줄. 왼쪽에 그림, 오른쪽에 받기나 삭제 버튼. */
+    function versionRow(model, version, index, host) {
+        const mine = version.id === data.version_id
+            || (version.installed_name && version.installed_name === name);
+        const row = document.createElement("div");
+        row.className = `fla-lp-vr${mine ? " on" : ""}`;
+        row.dataset.version = String(version.id ?? "");
+        row.title = t("versionOpenSide");
+        // 단추를 누른 것이면 그 일만 하고, 빈 곳을 누르면 오른쪽에 상세를 편다
+        row.onclick = (event) => {
+            if (event.target.closest("button, a")) return;
+            side.show(model.id, { versionId: version.id, folder: data.folder || "" });
+            markPicked(version.id);
+        };
+
+        // 그림 — 성인 등급이면 흐리게 두고 누르면 풀어준다
+        const shot = document.createElement("div");
+        shot.className = "fla-lp-vr-shot";
+        const image = (version.images ?? [])[0];
+        if (image) {
+            const isVideo = image.type === "video" || /\.(mp4|webm)(\?|$)/i.test(image.url);
+            const media = document.createElement(isVideo ? "video" : "img");
+            media.src = image.url;
+            if (isVideo) {
+                media.muted = true; media.loop = true; media.autoplay = true; media.playsInline = true;
+            } else {
+                media.loading = "lazy";
+            }
+            media.onerror = () => media.remove();
+            if (blurAdult && (image.nsfw_level ?? 0) >= ADULT_LEVEL) {
+                media.classList.add("fla-lp-blur");
+                shot.title = t("adultShow");
+                shot.onclick = () => { media.classList.remove("fla-lp-blur"); shot.onclick = null; };
+            }
+            shot.appendChild(media);
+        }
+        row.appendChild(shot);
+
+        const main = document.createElement("div");
+        main.className = "fla-lp-vr-main";
+
+        const head = document.createElement("div");
+        head.className = "fla-lp-vr-name";
+        head.append(version.name || `v${index + 1}`);
+        const link = document.createElement("a");
+        link.href = `https://civitai.com/models/${model.id}?modelVersionId=${version.id}`;
+        link.target = "_blank";
+        link.rel = "noopener noreferrer";
+        link.textContent = "↗";
+        link.title = t("detailOpenCivitai");
+        head.appendChild(link);
+        main.appendChild(head);
+
+        const tags = document.createElement("div");
+        tags.className = "fla-lp-vr-tags";
+        const tag = (text, kind) => {
+            const chip = document.createElement("span");
+            chip.className = `fla-lp-vr-tag${kind ? " " + kind : ""}`;
+            chip.textContent = text;
+            tags.appendChild(chip);
+        };
+        if (index === 0) tag(t("versionLatest"), "new");
+        if (mine) tag(t("versionCurrent"), "mine");
+        if (version.installed || mine) tag(t("versionInLibrary"), "have");
+        if (tags.children.length) main.appendChild(tags);
+
+        const meta = document.createElement("div");
+        meta.className = "fla-lp-vr-meta";
+        meta.textContent = [
+            version.base_model,
+            prettyDate(version.published),
+            version.size_kb ? prettySize(version.size_kb * 1024) : "",
+        ].filter(Boolean).join("  ·  ");
+        main.appendChild(meta);
+
+        if (version.file_name) {
+            const file = document.createElement("div");
+            file.className = "fla-lp-vr-file";
+            file.textContent = version.installed_name || version.file_name;
+            main.appendChild(file);
+        }
+        row.appendChild(main);
+
+        // 이미 가진 것은 지우고, 없는 것은 받는다
+        const acts = document.createElement("div");
+        acts.className = "fla-lp-vr-acts";
+        const target = mine ? name : (version.installed ? version.installed_name : "");
+        if (target) {
+            const drop = document.createElement("button");
+            drop.className = "fla-lp-vr-btn del";
+            drop.textContent = t("versionDelete");
+            drop.onclick = () => removeVersion(target, drop, host);
+            acts.appendChild(drop);
+        } else {
+            const get = document.createElement("button");
+            get.className = "fla-lp-vr-btn get";
+            get.textContent = t("civitaiDownload");
+            get.disabled = !version.downloadable;
+            if (!version.downloadable) get.title = t("versionNoFile");
+            get.onclick = () => grabVersion(model, version, get, host);
+            acts.appendChild(get);
+        }
+        row.appendChild(acts);
+        return row;
+    }
+
+    /** 버전 하나를 받는다. 저장 폴더는 지금 이 파일이 있는 곳을 먼저 쓴다. */
+    async function grabVersion(model, version, button, host) {
+        button.disabled = true;
+        try {
+            const res = await fetch("/fla/civitai/download", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    version_id: version.id,
+                    folder: data.folder || version.folder || "",
+                    title: model.name || data.title,
+                }),
+            });
+            const result = res.ok ? await res.json() : null;
+            if (!result?.ok) { toast(result?.error ?? t("civitaiDownloadFail"), true); return; }
+            toast(t("civitaiQueued"));
+            watchDownloads(host, host.querySelector(".fla-lp-vr-bar"));
+        } catch (e) {
+            toast(t("civitaiDownloadFail"), true);
+        } finally {
+            button.disabled = false;
+        }
+    }
+
+    /** 이미 가진 버전을 지운다. 되돌릴 수 없으므로 한 번 더 물어본다. */
+    async function removeVersion(target, button, host) {
+        if (!confirm(t("versionDeleteConfirm", target))) return;
+        button.disabled = true;
+        let result;
+        try {
+            const res = await fetch("/fla/lora-delete", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ name: target }),
+            });
+            result = await res.json();
+        } catch (e) {
+            result = null;
+        }
+        if (!result?.ok) {
+            button.disabled = false;
+            toast(t("versionDeleteFail") + (result?.error ?? ""), true);
+            return;
+        }
+        toast(t("versionDeleted"));
+        libraryPromise = null;
+        onInfoChanged?.();
+        // 지금 보고 있던 파일을 지웠으면 상세 창을 열어둘 수 없다
+        if (target === name) { close(); return; }
+        versions = null;
+        await loadVersions();
+        if (host.isConnected) paintVersions(host);
+    }
+
+    /** 버전 목록 칸을 (다시) 그린다. */
+    function paintVersions(host) {
+        host.replaceChildren();
+
+        const bar = document.createElement("div");
+        bar.className = "fla-lp-vr-bar";
+        bar.style.display = "none";
+        const who = document.createElement("div"); who.className = "who";
+        const track = document.createElement("div"); track.className = "track";
+        const fill = document.createElement("div"); fill.className = "fill";
+        track.appendChild(fill);
+        const pct = document.createElement("div"); pct.className = "pct";
+        bar.append(who, track, pct);
+        host.appendChild(bar);
+
+        const note = (text) => {
+            const line = document.createElement("div");
+            line.className = "fla-lp-vr-note";
+            line.textContent = text;
+            host.appendChild(line);
+        };
+        // Civitai 정보가 없으면 어느 모델의 버전인지 알 길이 없다
+        if (!data.model_id) { note(t("versionsNeedInfo")); return; }
+        if (versions === null) { note(t("versionsLoading")); return; }
+        if (versions === false) {
+            note(t("versionsFail") + (versionsError ? `  ·  ${versionsError}` : ""));
+            return;
+        }
+
+        const list = versions.versions ?? [];
+        if (!list.length) { note(t("versionsNone")); return; }
+
+        const box = document.createElement("div");
+        box.className = "fla-lp-vr-list";
+        list.forEach((version, index) => box.appendChild(versionRow(versions, version, index, host)));
+        host.appendChild(box);
+        // 줄을 새로 만들었으므로 펴 놓은 버전 표시를 다시 찍는다
+        markPicked(pickedVersion);
+        // 다른 창에서 받는 중일 수도 있다. 진행률이 있으면 이어서 보여준다.
+        watchDownloads(host, bar);
+    }
+
+    /** 버전 탭 — 지금 이 파일의 정보와, 이 모델의 모든 버전. */
     function renderVersion() {
         body.replaceChildren();
         const rows = document.createElement("dl");
@@ -609,6 +940,22 @@ export async function showLoraDetail(name, blurAdult = true, onPreviewChanged = 
             link.textContent = t("detailOpenCivitai");
             body.appendChild(link);
         }
+
+        const sec = document.createElement("div");
+        sec.className = "fla-lp-dt-sec";
+        sec.style.marginTop = "22px";
+        const title = document.createElement("h3");
+        title.textContent = t("versionsAll");
+        const host = document.createElement("div");
+        versionHost = host;
+        sec.append(title, host);
+        body.appendChild(sec);
+
+        paintVersions(host);
+        // 아직 안 받아왔으면 지금 받아서 다시 그린다
+        if (data.model_id && versions === null && !versionsBusy) {
+            loadVersions().then(() => { if (host.isConnected) paintVersions(host); });
+        }
     }
 
     const tabs = [
@@ -623,6 +970,9 @@ export async function showLoraDetail(name, blurAdult = true, onPreviewChanged = 
         button.onclick = () => {
             buttons.forEach((b) => b.classList.remove("on"));
             button.classList.add("on");
+            // 오른쪽 상세는 버전 탭에서 연 것이다. 탭을 옮기면 접는다.
+            side.clear();
+            pickedVersion = null;
             render();
         };
         tabsHost.appendChild(button);

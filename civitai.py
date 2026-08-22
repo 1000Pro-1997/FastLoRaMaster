@@ -501,26 +501,42 @@ DETAIL_IMAGES = 20
 # 이미 가진 로라 목록을 다시 훑는 간격(초)
 INSTALLED_TTL = 10.0
 
-_installed = {"hashes": None, "names": None, "at": 0.0}
+_installed = {"hashes": None, "names": None, "by_hash": None, "by_name": None, "at": 0.0}
 
 
 def _installed_index():
     """이미 가진 로라의 해시와 파일 이름. 검색 결과에 '있음' 을 찍는 데 쓴다.
 
     해시가 없는 파일도 있으므로(아직 한 번도 안 채운 것) 이름도 같이 본다.
+    어느 파일이었는지도 같이 담아둔다(버전 목록에서 지울 때 쓴다).
     """
     now = time.monotonic()
     if _installed["hashes"] is None or now - _installed["at"] > INSTALLED_TTL:
-        hashes = set()
-        names = set()
+        by_hash = {}
+        by_name = {}
         for name in folder_paths.get_filename_list("loras"):
-            names.add(os.path.basename(name).lower())
+            by_name.setdefault(os.path.basename(name).lower(), name)
             _, metadata_path = _metadata_path(name)
             sha = _load_metadata(metadata_path).get("sha256")
             if isinstance(sha, str) and len(sha) == 64:
-                hashes.add(sha.lower())
-        _installed.update({"hashes": hashes, "names": names, "at": now})
+                by_hash.setdefault(sha.lower(), name)
+        _installed.update({
+            "hashes": set(by_hash), "names": set(by_name),
+            "by_hash": by_hash, "by_name": by_name, "at": now,
+        })
     return _installed["hashes"], _installed["names"]
+
+
+def installed_name(sha, file_name):
+    """이미 가진 파일이면 로라 목록에서 쓰는 이름(폴더 포함). 없으면 빈 문자열."""
+    _installed_index()
+    if sha:
+        found = _installed["by_hash"].get(sha.lower())
+        if found:
+            return found
+    if file_name:
+        return _installed["by_name"].get(file_name.lower(), "")
+    return ""
 
 
 def _invalidate_installed():
@@ -579,6 +595,8 @@ def _trim_version(version, hashes, names, model=None, folders=None, max_images=S
         "sha256": sha,
         "downloadable": bool(primary),
         "installed": bool((sha and sha in hashes) or (file_name and file_name.lower() in names)),
+        # 이미 가진 파일이면 그 이름. 버전 목록에서 지울 때 이 이름으로 부른다.
+        "installed_name": installed_name(sha, file_name),
         "trained_words": version.get("trainedWords") or [],
         # 어느 폴더에 둘지 미리 골라둔다(화면에서 바꿀 수 있다)
         "folder": suggest_folder(model or {}, version, folders) if folders is not None else "",
